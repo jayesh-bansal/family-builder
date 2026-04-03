@@ -23,13 +23,12 @@
             </intent-filter>
 
             <!-- Deep links for invitation URLs -->
-            <!-- Replace YOUR_DOMAIN with your actual deployed domain -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="YOUR_DOMAIN" android:pathPrefix="/en/join/" />
-                <data android:scheme="https" android:host="YOUR_DOMAIN" android:pathPrefix="/es/join/" />
+                <data android:scheme="https" android:host="family-builder.vercel.app" android:pathPrefix="/en/join/" />
+                <data android:scheme="https" android:host="family-builder.vercel.app" android:pathPrefix="/es/join/" />
             </intent-filter>
 
             <!-- Custom URL scheme for OAuth callbacks -->
@@ -37,7 +36,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="com.familybuilder.app" />
+                <data android:scheme="com.banyan.app" />
             </intent-filter>
 
         </activity>

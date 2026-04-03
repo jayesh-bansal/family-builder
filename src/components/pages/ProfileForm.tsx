@@ -78,7 +78,6 @@ const SOCIAL_FIELDS: {
 
 export default function ProfileForm({ profile }: ProfileFormProps) {
   const t = useTranslations("profile");
-  const tAuth = useTranslations("auth");
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -97,15 +96,11 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
     profile.social_links || {}
   );
 
-  // Auth identity linking state
+  // Auth identity state
   const [authEmail, setAuthEmail] = useState<string | null>(null);
   const [authPhone, setAuthPhone] = useState<string | null>(null);
   const [linkEmail, setLinkEmail] = useState("");
   const [linkPhone, setLinkPhone] = useState("");
-  const [linkOtp, setLinkOtp] = useState("");
-  const [linkStep, setLinkStep] = useState<
-    "idle" | "email_sent" | "phone_otp_sent"
-  >("idle");
   const [linkLoading, setLinkLoading] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [linkSuccess, setLinkSuccess] = useState<string | null>(null);
@@ -196,11 +191,12 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
       return;
     }
 
-    setLinkStep("email_sent");
+    setAuthEmail(linkEmail.trim());
+    setLinkEmail("");
     setLinkSuccess(t("linkEmailSent"));
   };
 
-  const handleLinkPhoneSendOtp = async () => {
+  const handleLinkPhone = async () => {
     setLinkError(null);
     setLinkSuccess(null);
     if (!linkPhone.trim()) {
@@ -220,35 +216,8 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
       return;
     }
 
-    setLinkStep("phone_otp_sent");
-  };
-
-  const handleLinkPhoneVerify = async () => {
-    setLinkError(null);
-    setLinkSuccess(null);
-    if (!linkOtp.trim()) {
-      setLinkError(tAuth("otpRequired"));
-      return;
-    }
-    setLinkLoading(true);
-
-    const supabase = createClient();
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      phone: linkPhone.trim(),
-      token: linkOtp.trim(),
-      type: "phone_change",
-    });
-
-    setLinkLoading(false);
-    if (verifyError) {
-      setLinkError(verifyError.message);
-      return;
-    }
-
     setAuthPhone(linkPhone.trim());
     setLinkPhone("");
-    setLinkOtp("");
-    setLinkStep("idle");
     setLinkSuccess(t("linkPhoneSuccess"));
   };
 
@@ -262,8 +231,7 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
     (v) => v && v.trim()
   ).length;
 
-  const linkedMethodsCount =
-    (authEmail ? 1 : 0) + (authPhone ? 1 : 0);
+  const linkedMethodsCount = (authEmail ? 1 : 0) + (authPhone ? 1 : 0);
 
   return (
     <Card>
@@ -318,7 +286,7 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
           type="tel"
           value={form.phone}
           onChange={(e) => updateField("phone", e.target.value)}
-          placeholder="+1 234 567 8900"
+          placeholder="+91 98765 43210"
         />
         <Select
           id="tree_visibility"
@@ -369,33 +337,25 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
                     <span className="text-text">{authEmail}</span>
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {linkStep === "email_sent" ? (
-                      <p className="text-sm text-success bg-success/10 px-3 py-2 rounded-lg">
-                        {linkSuccess}
-                      </p>
-                    ) : (
-                      <div className="flex gap-2">
-                        <input
-                          type="email"
-                          value={linkEmail}
-                          onChange={(e) => {
-                            setLinkEmail(e.target.value);
-                            setLinkError(null);
-                          }}
-                          placeholder="you@example.com"
-                          className="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-surface text-text placeholder:text-text-light/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleLinkEmail}
-                          disabled={linkLoading}
-                          className="px-3 py-2 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors cursor-pointer"
-                        >
-                          {t("linkButton")}
-                        </button>
-                      </div>
-                    )}
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      value={linkEmail}
+                      onChange={(e) => {
+                        setLinkEmail(e.target.value);
+                        setLinkError(null);
+                      }}
+                      placeholder="you@example.com"
+                      className="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-surface text-text placeholder:text-text-light/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleLinkEmail}
+                      disabled={linkLoading}
+                      className="px-3 py-2 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors cursor-pointer"
+                    >
+                      {t("linkButton")}
+                    </button>
                   </div>
                 )}
               </div>
@@ -413,48 +373,6 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
                     <Check className="h-3.5 w-3.5 text-success" />
                     <span className="text-text">{authPhone}</span>
                   </div>
-                ) : linkStep === "phone_otp_sent" ? (
-                  <div className="space-y-2">
-                    <p className="text-xs text-text-light">
-                      {tAuth("otpSentTo")}{" "}
-                      <span className="font-medium text-text">{linkPhone}</span>
-                    </p>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={linkOtp}
-                        onChange={(e) => {
-                          setLinkOtp(
-                            e.target.value.replace(/\D/g, "").slice(0, 6)
-                          );
-                          setLinkError(null);
-                        }}
-                        placeholder="123456"
-                        maxLength={6}
-                        className="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-surface text-text placeholder:text-text-light/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleLinkPhoneVerify}
-                        disabled={linkLoading}
-                        className="px-3 py-2 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors cursor-pointer"
-                      >
-                        {tAuth("verifyOtp")}
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLinkStep("idle");
-                        setLinkOtp("");
-                        setLinkError(null);
-                      }}
-                      className="text-xs text-accent hover:underline cursor-pointer"
-                    >
-                      {tAuth("changePhone")}
-                    </button>
-                  </div>
                 ) : (
                   <div className="flex gap-2">
                     <input
@@ -464,12 +382,12 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
                         setLinkPhone(e.target.value);
                         setLinkError(null);
                       }}
-                      placeholder="+1 234 567 8900"
+                      placeholder="+91 98765 43210"
                       className="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-surface text-text placeholder:text-text-light/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                     />
                     <button
                       type="button"
-                      onClick={handleLinkPhoneSendOtp}
+                      onClick={handleLinkPhone}
                       disabled={linkLoading}
                       className="px-3 py-2 text-sm font-medium rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors cursor-pointer"
                     >
@@ -484,7 +402,7 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
                   {linkError}
                 </p>
               )}
-              {linkSuccess && linkStep === "idle" && (
+              {linkSuccess && (
                 <p className="text-sm text-success bg-success/10 px-3 py-2 rounded-lg">
                   {linkSuccess}
                 </p>

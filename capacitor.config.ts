@@ -9,7 +9,7 @@ const config: CapacitorConfig = {
     // For local development, use your machine's IP:
     // url: "http://192.168.x.x:3000",
     // For production, set this to your deployed URL:
-    // url: "https://familybuilder.yourdomain.com",
+    url: "https://family-builder.vercel.app",
     androidScheme: "https",
   },
   plugins: {
