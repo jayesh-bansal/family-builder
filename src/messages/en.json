@@ -1,0 +1,144 @@
+{
+  "common": {
+    "appName": "Banyan",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "confirm": "Confirm",
+    "back": "Back",
+    "search": "Search",
+    "or": "or"
+  },
+  "landing": {
+    "hero": "Your Family, One Rooted Tree",
+    "subtitle": "Discover your roots, grow your branches, and bring your family together — the way a Banyan grows.",
+    "getStarted": "Get Started",
+    "login": "Log In",
+    "features": {
+      "build": {
+        "title": "Build Your Tree",
+        "description": "Add family members, set relationships, and watch your tree grow."
+      },
+      "connect": {
+        "title": "Connect with Family",
+        "description": "Invite relatives to join and link their trees with yours."
+      },
+      "discover": {
+        "title": "Discover Relatives",
+        "description": "Find how you're connected to distant relatives through your family network."
+      }
+    }
+  },
+  "auth": {
+    "login": "Log In",
+    "signup": "Sign Up",
+    "logout": "Log Out",
+    "email": "Email",
+    "phone": "Phone Number",
+    "password": "Password",
+    "fullName": "Full Name",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "loginWithGoogle": "Continue with Google",
+    "forgotPassword": "Forgot password?",
+    "or": "or",
+    "sendOtp": "Send Verification Code",
+    "verifyOtp": "Verify Code",
+    "otpCode": "Verification Code",
+    "otpHint": "We'll send a 6-digit code to verify your phone number.",
+    "otpSentTo": "Code sent to",
+    "otpRequired": "Please enter the verification code.",
+    "phoneRequired": "Please enter your phone number.",
+    "nameRequired": "Please enter your name.",
+    "changePhone": "Use a different number"
+  },
+  "dashboard": {
+    "welcome": "Welcome back, {name}!",
+    "myTree": "My Family Tree",
+    "members": "Family Members",
+    "invitations": "Invitations",
+    "notifications": "Notifications",
+    "viewTree": "View Tree",
+    "addMember": "Add Member",
+    "quickStats": {
+      "totalMembers": "Total Members",
+      "pendingInvites": "Pending Invites",
+      "connections": "Connections"
+    }
+  },
+  "tree": {
+    "title": "Family Tree",
+    "addMember": "Add Family Member",
+    "editMember": "Edit Member",
+    "removeMember": "Remove Member",
+    "placeholder": "Add as placeholder (not on platform)",
+    "relationship": "Relationship",
+    "selectRelationship": "Select relationship type",
+    "relatedTo": "Related to",
+    "pathTo": "How am I related to {name}?",
+    "noPath": "No connection found to {name}.",
+    "pathResult": "You are connected to {name} through {steps} steps."
+  },
+  "profile": {
+    "title": "Profile",
+    "editProfile": "Edit Profile",
+    "fullName": "Full Name",
+    "bio": "Bio",
+    "birthDate": "Date of Birth",
+    "deathDate": "Date of Passing",
+    "location": "Location",
+    "phone": "Phone",
+    "email": "Email",
+    "visibility": "Tree Visibility",
+    "visibilityOptions": {
+      "public": "Public — Anyone can see your tree",
+      "family_only": "Family Only — Only connected family members",
+      "private": "Private — Only you can see your tree"
+    },
+    "updated": "Profile updated successfully!",
+    "loginMethods": "Login Methods",
+    "linked": "linked",
+    "linkButton": "Link",
+    "linkEmailRequired": "Please enter an email address.",
+    "linkPhoneRequired": "Please enter a phone number.",
+    "linkEmailSent": "Confirmation email sent! Check your inbox to verify.",
+    "linkPhoneSuccess": "Phone number linked successfully!",
+    "loginMethodsHint": "Link both email and phone so you can log in with either one."
+  },
+  "invite": {
+    "title": "Invite Family Member",
+    "sendInvite": "Send Invite",
+    "inviteLink": "Invite Link",
+    "copyLink": "Copy Link",
+    "copied": "Copied!",
+    "pending": "Pending Invitations",
+    "accepted": "Accepted",
+    "expired": "Expired",
+    "claimNode": "Claim Your Place",
+    "welcome": "Welcome to the family!"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markRead": "Mark as read",
+    "markAllRead": "Mark all as read",
+    "empty": "No notifications yet."
+  },
+  "relationships": {
+    "parent": "Parent",
+    "child": "Child",
+    "spouse": "Spouse",
+    "sibling": "Sibling",
+    "grandparent": "Grandparent",
+    "grandchild": "Grandchild",
+    "step_parent": "Step Parent",
+    "step_child": "Step Child",
+    "adopted_parent": "Adoptive Parent",
+    "adopted_child": "Adopted Child",
+    "half_sibling": "Half Sibling",
+    "godparent": "Godparent",
+    "godchild": "Godchild",
+    "close_friend": "Close Friend"
+  }
+}

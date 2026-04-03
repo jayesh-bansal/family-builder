@@ -1,0 +1,144 @@
+{
+  "common": {
+    "appName": "Banyan",
+    "loading": "Cargando...",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "confirm": "Confirmar",
+    "back": "Volver",
+    "search": "Buscar",
+    "or": "o"
+  },
+  "landing": {
+    "hero": "Construye Tu Árbol Familiar Juntos",
+    "subtitle": "Conéctate con tu familia, descubre tus raíces y haz crecer tu árbol familiar — rama por rama.",
+    "getStarted": "Comenzar",
+    "login": "Iniciar Sesión",
+    "features": {
+      "build": {
+        "title": "Construye Tu Árbol",
+        "description": "Agrega familiares, establece relaciones y observa cómo crece tu árbol."
+      },
+      "connect": {
+        "title": "Conéctate con la Familia",
+        "description": "Invita a familiares a unirse y vincular sus árboles con el tuyo."
+      },
+      "discover": {
+        "title": "Descubre Parientes",
+        "description": "Descubre cómo estás conectado con parientes lejanos a través de tu red familiar."
+      }
+    }
+  },
+  "auth": {
+    "login": "Iniciar Sesión",
+    "signup": "Registrarse",
+    "logout": "Cerrar Sesión",
+    "email": "Correo electrónico",
+    "phone": "Número de teléfono",
+    "password": "Contraseña",
+    "fullName": "Nombre completo",
+    "noAccount": "¿No tienes cuenta?",
+    "hasAccount": "¿Ya tienes cuenta?",
+    "loginWithGoogle": "Continuar con Google",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "or": "o",
+    "sendOtp": "Enviar código de verificación",
+    "verifyOtp": "Verificar código",
+    "otpCode": "Código de verificación",
+    "otpHint": "Te enviaremos un código de 6 dígitos para verificar tu número.",
+    "otpSentTo": "Código enviado a",
+    "otpRequired": "Por favor ingresa el código de verificación.",
+    "phoneRequired": "Por favor ingresa tu número de teléfono.",
+    "nameRequired": "Por favor ingresa tu nombre.",
+    "changePhone": "Usar otro número"
+  },
+  "dashboard": {
+    "welcome": "¡Bienvenido de vuelta, {name}!",
+    "myTree": "Mi Árbol Familiar",
+    "members": "Miembros de la Familia",
+    "invitations": "Invitaciones",
+    "notifications": "Notificaciones",
+    "viewTree": "Ver Árbol",
+    "addMember": "Agregar Miembro",
+    "quickStats": {
+      "totalMembers": "Total de Miembros",
+      "pendingInvites": "Invitaciones Pendientes",
+      "connections": "Conexiones"
+    }
+  },
+  "tree": {
+    "title": "Árbol Familiar",
+    "addMember": "Agregar Familiar",
+    "editMember": "Editar Miembro",
+    "removeMember": "Eliminar Miembro",
+    "placeholder": "Agregar como marcador (no está en la plataforma)",
+    "relationship": "Parentesco",
+    "selectRelationship": "Seleccionar tipo de parentesco",
+    "relatedTo": "Relacionado con",
+    "pathTo": "¿Cómo estoy relacionado con {name}?",
+    "noPath": "No se encontró conexión con {name}.",
+    "pathResult": "Estás conectado con {name} a través de {steps} pasos."
+  },
+  "profile": {
+    "title": "Perfil",
+    "editProfile": "Editar Perfil",
+    "fullName": "Nombre completo",
+    "bio": "Biografía",
+    "birthDate": "Fecha de nacimiento",
+    "deathDate": "Fecha de fallecimiento",
+    "location": "Ubicación",
+    "phone": "Teléfono",
+    "email": "Correo electrónico",
+    "visibility": "Visibilidad del Árbol",
+    "visibilityOptions": {
+      "public": "Público — Cualquiera puede ver tu árbol",
+      "family_only": "Solo Familia — Solo familiares conectados",
+      "private": "Privado — Solo tú puedes ver tu árbol"
+    },
+    "updated": "¡Perfil actualizado exitosamente!",
+    "loginMethods": "Métodos de inicio de sesión",
+    "linked": "vinculados",
+    "linkButton": "Vincular",
+    "linkEmailRequired": "Por favor ingresa un correo electrónico.",
+    "linkPhoneRequired": "Por favor ingresa un número de teléfono.",
+    "linkEmailSent": "¡Correo de confirmación enviado! Revisa tu bandeja de entrada.",
+    "linkPhoneSuccess": "¡Número de teléfono vinculado exitosamente!",
+    "loginMethodsHint": "Vincula correo y teléfono para iniciar sesión con cualquiera de los dos."
+  },
+  "invite": {
+    "title": "Invitar Familiar",
+    "sendInvite": "Enviar Invitación",
+    "inviteLink": "Enlace de Invitación",
+    "copyLink": "Copiar Enlace",
+    "copied": "¡Copiado!",
+    "pending": "Invitaciones Pendientes",
+    "accepted": "Aceptada",
+    "expired": "Expirada",
+    "claimNode": "Reclama Tu Lugar",
+    "welcome": "¡Bienvenido a la familia!"
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "markRead": "Marcar como leída",
+    "markAllRead": "Marcar todas como leídas",
+    "empty": "Aún no hay notificaciones."
+  },
+  "relationships": {
+    "parent": "Padre/Madre",
+    "child": "Hijo/Hija",
+    "spouse": "Cónyuge",
+    "sibling": "Hermano/Hermana",
+    "grandparent": "Abuelo/Abuela",
+    "grandchild": "Nieto/Nieta",
+    "step_parent": "Padrastro/Madrastra",
+    "step_child": "Hijastro/Hijastra",
+    "adopted_parent": "Padre/Madre Adoptivo",
+    "adopted_child": "Hijo/Hija Adoptivo",
+    "half_sibling": "Medio Hermano/Hermana",
+    "godparent": "Padrino/Madrina",
+    "godchild": "Ahijado/Ahijada",
+    "close_friend": "Amigo Cercano"
+  }
+}

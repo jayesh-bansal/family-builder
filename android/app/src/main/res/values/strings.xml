@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Family Builder</string>
+    <string name="title_activity_main">Family Builder</string>
+    <string name="package_name">com.familybuilder.app</string>
+    <string name="custom_url_scheme">com.familybuilder.app</string>
+</resources>
