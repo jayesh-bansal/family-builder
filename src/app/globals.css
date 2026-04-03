@@ -67,6 +67,27 @@ body {
   }
 }
 
+/* Prevent layout shift when mobile keyboard opens */
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure focused inputs scroll into view on mobile */
+@media (max-width: 768px) {
+  input:focus,
+  textarea:focus,
+  select:focus {
+    scroll-margin-bottom: 120px;
+  }
+}
+
 /* Warm scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

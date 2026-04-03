@@ -11,7 +11,7 @@ interface PushNotificationManagerProps {
 /**
  * Registers for push notifications when running inside Capacitor.
  * Stores the device token in the device_tokens table.
- * No-op on web.
+ * Gracefully no-ops on web or when Firebase is not configured.
  */
 export default function PushNotificationManager({
   userId,
@@ -22,38 +22,48 @@ export default function PushNotificationManager({
     if (!isNative() || registered.current) return;
     registered.current = true;
 
-    (async () => {
+    // Delay registration to avoid blocking app startup
+    const timer = setTimeout(async () => {
       try {
         const { PushNotifications } = await import(
           "@capacitor/push-notifications"
         );
 
+        // Check if push is available before requesting
+        const checkResult = await PushNotifications.checkPermissions().catch(
+          () => null
+        );
+        if (!checkResult) {
+          console.debug("Push notifications not supported on this device");
+          return;
+        }
+
         // Request permission
         const permResult = await PushNotifications.requestPermissions();
         if (permResult.receive !== "granted") return;
 
-        // Register with APNS / FCM
-        await PushNotifications.register();
+        // Listen for registration errors BEFORE calling register()
+        PushNotifications.addListener("registrationError", (error) => {
+          console.debug("Push registration failed (Firebase not configured?):", error);
+        });
 
         // Listen for token
         PushNotifications.addListener("registration", async (token) => {
-          const supabase = createClient();
-          const platform = getPlatform();
+          try {
+            const supabase = createClient();
+            const platform = getPlatform();
 
-          // Upsert the device token
-          await supabase.from("device_tokens").upsert(
-            {
-              user_id: userId,
-              token: token.value,
-              platform,
-            },
-            { onConflict: "user_id,token" }
-          );
-        });
-
-        // Handle registration errors
-        PushNotifications.addListener("registrationError", (error) => {
-          console.error("Push registration failed:", error);
+            await supabase.from("device_tokens").upsert(
+              {
+                user_id: userId,
+                token: token.value,
+                platform,
+              },
+              { onConflict: "user_id,token" }
+            );
+          } catch (err) {
+            console.debug("Failed to save device token:", err);
+          }
         });
 
         // Handle received notifications (app in foreground)
@@ -74,13 +84,19 @@ export default function PushNotificationManager({
             }
           }
         );
+
+        // Register with APNS / FCM — this is what can crash without google-services.json
+        await PushNotifications.register().catch((err) => {
+          console.debug("Push register() failed:", err);
+        });
       } catch (err) {
-        // Push notifications not available (web or plugin not installed)
+        // Plugin not available or other error — silently ignore
         console.debug("Push notifications not available:", err);
       }
-    })();
+    }, 3000); // 3 second delay so app loads first
+
+    return () => clearTimeout(timer);
   }, [userId]);
 
-  // This component renders nothing — it's a side-effect manager
   return null;
 }
