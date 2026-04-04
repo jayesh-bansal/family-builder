@@ -499,6 +499,7 @@ export default function FamilyTreeView({
           currentUser={currentUser}
           members={members}
           relationships={relationships}
+          familyVariant={variant}
           onClose={() => setShowPathFinder(false)}
         />
       )}
@@ -509,6 +510,7 @@ export default function FamilyTreeView({
           relationships={relationships}
           members={members}
           isCurrentUser={selectedMemberId === currentUser.id}
+          familyVariant={variant}
           onClose={() => setSelectedMemberId(null)}
           onEdit={(member) => {
             setSelectedMemberId(null);

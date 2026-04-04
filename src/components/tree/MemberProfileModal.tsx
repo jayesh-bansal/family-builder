@@ -19,13 +19,14 @@ import {
 import Avatar from "@/components/ui/Avatar";
 import Button from "@/components/ui/Button";
 import type { Profile, Relationship, SocialLinks } from "@/lib/types";
-import { RELATIONSHIP_LABELS } from "@/lib/types";
+import { getRelationshipLabel, type FamilyVariant } from "@/lib/variants";
 
 interface MemberProfileModalProps {
   profile: Profile;
   relationships: Relationship[];
   members: Profile[];
   isCurrentUser: boolean;
+  familyVariant?: FamilyVariant;
   onClose: () => void;
   onEdit?: (member: Profile) => void;
 }
@@ -160,6 +161,7 @@ export default function MemberProfileModal({
   relationships,
   members,
   isCurrentUser,
+  familyVariant = "global",
   onClose,
   onEdit,
 }: MemberProfileModalProps) {
@@ -334,10 +336,11 @@ export default function MemberProfileModal({
               </div>
               <div className="space-y-2">
                 {directRelations.map((rel, i) => {
-                  const label =
-                    RELATIONSHIP_LABELS[
-                      rel.type as keyof typeof RELATIONSHIP_LABELS
-                    ] || rel.type.replace(/_/g, " ");
+                  const label = getRelationshipLabel(
+                    rel.type,
+                    rel.person!.gender,
+                    familyVariant
+                  );
                   return (
                     <div
                       key={i}

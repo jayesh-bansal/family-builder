@@ -88,6 +88,17 @@ body {
   }
 }
 
+/* Hide browser's native password reveal button (Edge/Chrome) */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-textfield-decoration-container {
+  display: none;
+}
+
 /* Warm scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

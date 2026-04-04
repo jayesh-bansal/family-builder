@@ -25,6 +25,33 @@ export function getVariantConfig(variant: FamilyVariant): VariantConfig {
   }
 }
 
+/**
+ * Get a variant-aware label for a single relationship type.
+ * Falls back to generic English label if gender isn't available.
+ *
+ * Usage: getRelationshipLabel("parent", "male", "indian") → "Papa"
+ *        getRelationshipLabel("parent", null, "global") → "Parent"
+ */
+export function getRelationshipLabel(
+  relType: string,
+  gender: string | null | undefined,
+  variant: FamilyVariant
+): string {
+  const config = getVariantConfig(variant);
+  const g = normalizeGender(gender);
+  const key = `${relType}:${genderKey(g)}`;
+
+  // Try variant-specific hop label first
+  if (config.hopLabels[key]) return config.hopLabels[key];
+
+  // Try the "other" gender fallback
+  const fallbackKey = `${relType}:o`;
+  if (config.hopLabels[fallbackKey]) return config.hopLabels[fallbackKey];
+
+  // Last resort: humanize the type string
+  return relType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 /** Normalize a gender value to our Gender type */
 function normalizeGender(gender: string | null | undefined): Gender {
   if (gender === "male" || gender === "female") return gender;

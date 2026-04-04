@@ -20,7 +20,7 @@ export default async function Home() {
   const userId = user.id;
 
   // Parallelize ALL DB queries
-  const [profileResult, memberResult, inviteResult, familyResult] =
+  const [profileResult, relationshipResult, inviteResult, familyResult] =
     await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).single(),
       supabase
@@ -62,12 +62,15 @@ export default async function Home() {
   }
 
   const familyMembers = familyResult.data || [profile];
+  const relationshipCount = relationshipResult.count ?? 0;
+  const treeMemberCount = familyMembers.length;
 
   return (
     <AppShell user={profile}>
       <DashboardContent
         profile={profile}
-        memberCount={memberResult.count ?? 0}
+        memberCount={treeMemberCount}
+        connectionCount={relationshipCount}
         inviteCount={inviteResult.count ?? 0}
         familyMembers={familyMembers}
       />

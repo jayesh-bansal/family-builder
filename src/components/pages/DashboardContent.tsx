@@ -2,7 +2,7 @@
 
 import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
-import { Users, Mail, Eye } from "lucide-react";
+import { Users, Mail, Link2 } from "lucide-react";
 import KutumbLogo from "@/components/ui/KutumbLogo";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -13,6 +13,7 @@ import type { Profile } from "@/lib/types";
 interface DashboardContentProps {
   profile: Profile;
   memberCount: number;
+  connectionCount: number;
   inviteCount: number;
   familyMembers?: Profile[];
 }
@@ -20,6 +21,7 @@ interface DashboardContentProps {
 export default function DashboardContent({
   profile,
   memberCount,
+  connectionCount,
   inviteCount,
   familyMembers = [],
 }: DashboardContentProps) {
@@ -32,14 +34,14 @@ export default function DashboardContent({
       value: memberCount,
     },
     {
+      icon: <Link2 className="h-6 w-6 text-primary" />,
+      label: t("quickStats.connections"),
+      value: connectionCount,
+    },
+    {
       icon: <Mail className="h-6 w-6 text-secondary" />,
       label: t("quickStats.pendingInvites"),
       value: inviteCount,
-    },
-    {
-      icon: <Eye className="h-6 w-6 text-primary" />,
-      label: t("quickStats.connections"),
-      value: memberCount,
     },
   ];
 

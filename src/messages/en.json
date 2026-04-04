@@ -56,7 +56,7 @@
   },
   "dashboard": {
     "welcome": "Welcome back, {name}!",
-    "myTree": "My Family Tree",
+    "myTree": "Home",
     "members": "Family Members",
     "invitations": "Invitations",
     "notifications": "Notifications",

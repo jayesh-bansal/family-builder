@@ -28,6 +28,7 @@ export default function BirthdayCalendar({ members }: BirthdayCalendarProps) {
   const today = new Date();
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   // Build a map of month-day → members with birthdays
   const birthdayMap = useMemo(() => {
@@ -52,6 +53,7 @@ export default function BirthdayCalendar({ members }: BirthdayCalendarProps) {
   const dayNames = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
   const prevMonth = () => {
+    setSelectedDay(null);
     if (viewMonth === 0) {
       setViewMonth(11);
       setViewYear(viewYear - 1);
@@ -61,6 +63,7 @@ export default function BirthdayCalendar({ members }: BirthdayCalendarProps) {
   };
 
   const nextMonth = () => {
+    setSelectedDay(null);
     if (viewMonth === 11) {
       setViewMonth(0);
       setViewYear(viewYear + 1);
@@ -70,6 +73,7 @@ export default function BirthdayCalendar({ members }: BirthdayCalendarProps) {
   };
 
   const goToday = () => {
+    setSelectedDay(null);
     setViewMonth(today.getMonth());
     setViewYear(today.getFullYear());
   };
@@ -157,28 +161,46 @@ export default function BirthdayCalendar({ members }: BirthdayCalendarProps) {
               d === today.getDate() &&
               viewMonth === today.getMonth() &&
               viewYear === today.getFullYear();
+            const isSelected = selectedDay === key;
 
             return (
-              <div
-                key={d}
-                className={`h-8 flex items-center justify-center text-xs rounded-lg relative transition-colors ${
-                  hasBirthday
-                    ? "bg-accent text-white font-bold cursor-default"
-                    : isToday
-                    ? "bg-primary/10 text-primary font-semibold"
-                    : "text-text-light hover:bg-muted/50"
-                }`}
-                title={
-                  hasBirthday
-                    ? birthdayMembers
-                        .map((m) => m.full_name + "'s birthday")
-                        .join(", ")
-                    : undefined
-                }
-              >
-                {d}
-                {hasBirthday && (
-                  <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-white border-2 border-accent" />
+              <div key={d} className="relative">
+                <div
+                  onClick={hasBirthday ? () => setSelectedDay(isSelected ? null : key) : undefined}
+                  className={`h-8 flex items-center justify-center text-xs rounded-lg relative transition-colors ${
+                    hasBirthday
+                      ? "bg-accent text-white font-bold cursor-pointer hover:bg-accent/90"
+                      : isToday
+                      ? "bg-primary/10 text-primary font-semibold"
+                      : "text-text-light hover:bg-muted/50"
+                  }`}
+                >
+                  {d}
+                  {hasBirthday && (
+                    <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-white border-2 border-accent" />
+                  )}
+                </div>
+
+                {/* Birthday popup on click */}
+                {hasBirthday && isSelected && (
+                  <div className="absolute z-20 top-full mt-1 left-1/2 -translate-x-1/2 w-48 bg-surface border border-border rounded-xl shadow-lg p-2 space-y-1">
+                    <p className="text-[10px] font-semibold text-text-light px-1 uppercase tracking-wide">
+                      Birthdays on {new Date(viewYear, viewMonth, d).toLocaleDateString("en", { month: "short", day: "numeric" })}
+                    </p>
+                    {birthdayMembers.map((m) => {
+                      const bd = new Date(m.birth_date + "T00:00:00");
+                      const age = viewYear - bd.getFullYear();
+                      return (
+                        <div key={m.id} className="flex items-center gap-2 px-1 py-1 rounded-lg hover:bg-muted/50">
+                          <Avatar src={m.avatar_url} name={m.full_name} size="sm" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium text-text truncate">{m.full_name}</p>
+                            {age > 0 && <p className="text-[10px] text-text-light">Turns {age}</p>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             );

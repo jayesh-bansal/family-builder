@@ -93,16 +93,16 @@ export default function Navbar({ user }: NavbarProps) {
 
           {/* Not logged in */}
           {!user && (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
               <Link
                 href="/login"
-                className="text-primary font-medium hover:text-primary-dark transition-colors"
+                className="text-primary font-medium hover:text-primary-dark transition-colors text-sm sm:text-base px-2 py-2"
               >
                 {t("auth.login")}
               </Link>
               <Link
                 href="/signup"
-                className="bg-primary text-white px-4 py-2 rounded-xl font-medium hover:bg-primary-dark transition-colors"
+                className="bg-primary text-white px-3 sm:px-4 py-2 rounded-xl font-medium hover:bg-primary-dark transition-colors text-sm sm:text-base whitespace-nowrap"
               >
                 {t("auth.signup")}
               </Link>

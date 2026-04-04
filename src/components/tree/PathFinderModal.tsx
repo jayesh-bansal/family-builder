@@ -7,12 +7,13 @@ import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
 import Avatar from "@/components/ui/Avatar";
 import type { Profile, Relationship } from "@/lib/types";
-import { RELATIONSHIP_LABELS } from "@/lib/types";
+import { getRelationshipLabel, type FamilyVariant } from "@/lib/variants";
 
 interface PathFinderModalProps {
   currentUser: Profile;
   members: Profile[];
   relationships: Relationship[];
+  familyVariant: FamilyVariant;
   onClose: () => void;
 }
 
@@ -79,6 +80,7 @@ export default function PathFinderModal({
   currentUser,
   members,
   relationships,
+  familyVariant,
   onClose,
 }: PathFinderModalProps) {
   const t = useTranslations("tree");
@@ -162,9 +164,11 @@ export default function PathFinderModal({
                   <div key={i}>
                     <div className="text-center text-xs text-text-light py-1">
                       ↓{" "}
-                      {RELATIONSHIP_LABELS[
-                        step.relationship as keyof typeof RELATIONSHIP_LABELS
-                      ] || step.relationship}
+                      {getRelationshipLabel(
+                        step.relationship,
+                        step.person.gender,
+                        familyVariant
+                      )}
                     </div>
                     <div
                       className={`flex items-center gap-2 px-3 py-2 rounded-xl ${

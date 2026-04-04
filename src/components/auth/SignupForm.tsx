@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Card from "@/components/ui/Card";
+import type { Gender, FamilyVariant } from "@/lib/types";
 
 type AuthMethod = "email" | "phone";
 
@@ -20,6 +21,8 @@ export default function SignupForm() {
   // Shared state
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
+  const [gender, setGender] = useState<Gender | "">("");
+  const [familyVariant, setFamilyVariant] = useState<FamilyVariant>("global");
 
   // Email state
   const [email, setEmail] = useState("");
@@ -33,29 +36,42 @@ export default function SignupForm() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!gender) {
+      setError("Please select your gender.");
+      return;
+    }
+
     setLoading(true);
 
     const supabase = createClient();
 
+    const meta = {
+      full_name: fullName,
+      gender,
+      family_variant: familyVariant,
+    };
+
     const credentials =
       method === "email"
-        ? {
-            email,
-            password,
-            options: { data: { full_name: fullName } },
-          }
-        : {
-            phone: phone.trim(),
-            password,
-            options: { data: { full_name: fullName } },
-          };
+        ? { email, password, options: { data: meta } }
+        : { phone: phone.trim(), password, options: { data: meta } };
 
-    const { error: authError } = await supabase.auth.signUp(credentials);
+    const { data: signUpData, error: authError } =
+      await supabase.auth.signUp(credentials);
 
     if (authError) {
       setError(authError.message);
       setLoading(false);
       return;
+    }
+
+    // Also update the profile directly if user was created
+    if (signUpData.user) {
+      await supabase
+        .from("profiles")
+        .update({ gender, family_variant: familyVariant })
+        .eq("id", signUpData.user.id);
     }
 
     router.push("/dashboard");
@@ -153,6 +169,76 @@ export default function SignupForm() {
           minLength={6}
           required
         />
+
+        {/* Gender selection */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-text">
+            Gender <span className="text-error">*</span>
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                { value: "male", label: "Male" },
+                { value: "female", label: "Female" },
+                { value: "other", label: "Other" },
+              ] as const
+            ).map((opt) => (
+              <label
+                key={opt.value}
+                className={`flex-1 min-w-[80px] flex items-center justify-center px-2 py-2 rounded-xl border-2 text-sm font-medium cursor-pointer transition-all ${
+                  gender === opt.value
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-surface text-text-light hover:border-primary/30"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="signup_gender"
+                  value={opt.value}
+                  checked={gender === opt.value}
+                  onChange={(e) => setGender(e.target.value as Gender)}
+                  className="sr-only"
+                />
+                {opt.label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Family Naming Style */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-text">
+            Family Naming Style
+          </label>
+          <div className="flex gap-2">
+            {(
+              [
+                { value: "global", label: "English", desc: "Father, Mother..." },
+                { value: "indian", label: "Hindi", desc: "Papa, Mummy..." },
+              ] as const
+            ).map((opt) => (
+              <label
+                key={opt.value}
+                className={`flex-1 flex flex-col items-center px-2 py-2 rounded-xl border-2 text-sm font-medium cursor-pointer transition-all text-center ${
+                  familyVariant === opt.value
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-surface text-text-light hover:border-primary/30"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="signup_variant"
+                  value={opt.value}
+                  checked={familyVariant === opt.value}
+                  onChange={(e) => setFamilyVariant(e.target.value as FamilyVariant)}
+                  className="sr-only"
+                />
+                <span>{opt.label}</span>
+                <span className="text-[10px] text-text-light/70 font-normal">{opt.desc}</span>
+              </label>
+            ))}
+          </div>
+        </div>
 
         {error && (
           <p className="text-sm text-error bg-error/10 px-3 py-2 rounded-lg">
