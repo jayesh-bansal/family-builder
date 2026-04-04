@@ -171,12 +171,73 @@ interface AutoLinkResult {
 }
 
 /**
+ * Find existing parents of a person (returns their IDs).
+ */
+export function findParents(
+  allRelationships: ExistingRelationship[],
+  personId: string
+): string[] {
+  const parents: string[] = [];
+  for (const rel of allRelationships) {
+    // person_id → related_person_id with type "parent" means related_person IS person's parent
+    if (
+      rel.person_id === personId &&
+      PARENT_TYPES.includes(rel.relationship_type as RelationshipType)
+    ) {
+      parents.push(rel.related_person_id);
+    }
+    // person_id → related_person_id with type "child" means related_person IS person's child
+    // So if person_id is a child of someone: rel.related_person_id = personId, type = child
+    // means personId IS rel.person_id's child → rel.person_id is a parent of personId
+    if (
+      rel.related_person_id === personId &&
+      CHILD_TYPES.includes(rel.relationship_type as RelationshipType)
+    ) {
+      parents.push(rel.person_id);
+    }
+  }
+  return [...new Set(parents)];
+}
+
+/**
+ * Find existing children of a person (returns their IDs).
+ */
+export function findChildren(
+  allRelationships: ExistingRelationship[],
+  personId: string
+): string[] {
+  const children: string[] = [];
+  for (const rel of allRelationships) {
+    // person_id → related_person_id with type "child" means related_person IS person's child
+    if (
+      rel.person_id === personId &&
+      CHILD_TYPES.includes(rel.relationship_type as RelationshipType)
+    ) {
+      children.push(rel.related_person_id);
+    }
+    // related_person_id has type "parent" on person_id → related_person is parent of person
+    // Inverse: person_id → related_person_id with "parent" means related IS parent.
+    // So: rel.person_id = someChild, rel.related_person_id = personId, type = "parent"
+    // means personId IS someChild's parent
+    if (
+      rel.related_person_id === personId &&
+      PARENT_TYPES.includes(rel.relationship_type as RelationshipType)
+    ) {
+      children.push(rel.person_id);
+    }
+  }
+  return [...new Set(children)];
+}
+
+/**
  * Compute auto-link relationships that should be created alongside the primary one.
  *
  * Rules:
- * - Adding parent to person A → also add parent to A's siblings
- * - Adding child to person A → also add child to A's spouse
- * - Adding sibling to person A → also link new sibling to A's existing parents
+ * 1. Adding parent to A → also add parent to A's siblings
+ * 2. Adding parent to A → auto-link as spouse of A's existing other parent
+ * 3. Adding child to A → also add child to A's spouse
+ * 4. Adding sibling to A → also link new sibling to A's existing parents
+ * 5. Adding spouse to A → auto-link A's existing children to new spouse
  */
 export function computeAutoLinks(
   allRelationships: ExistingRelationship[],
@@ -185,117 +246,76 @@ export function computeAutoLinks(
   relType: RelationshipType
 ): AutoLinkResult[] {
   const links: AutoLinkResult[] = [];
+  const addedKeys = new Set<string>();
 
-  // If adding a PARENT type → auto-link to siblings
+  // Helper to add a link pair with deduplication
+  const addLink = (
+    personA: string,
+    personB: string,
+    type: RelationshipType
+  ) => {
+    const key = [personA, personB].sort().join("-") + ":" + type;
+    const invKey =
+      [personA, personB].sort().join("-") + ":" + INVERSE_RELATIONSHIP[type];
+    if (addedKeys.has(key) || addedKeys.has(invKey)) return;
+    if (hasDuplicateRelationship(allRelationships, personA, personB, type))
+      return;
+    addedKeys.add(key);
+    links.push({
+      person_id: personA,
+      related_person_id: personB,
+      relationship_type: type,
+    });
+    links.push({
+      person_id: personB,
+      related_person_id: personA,
+      relationship_type: INVERSE_RELATIONSHIP[type],
+    });
+  };
+
+  // ── Rule 1: Adding PARENT → also add parent to siblings ──
   if (PARENT_TYPES.includes(relType)) {
     const siblings = findSiblings(allRelationships, relatedTo);
     for (const sibId of siblings) {
-      // Check not already linked
-      if (
-        !hasDuplicateRelationship(
-          allRelationships,
-          sibId,
-          newMemberId,
-          relType
-        )
-      ) {
-        links.push({
-          person_id: sibId,
-          related_person_id: newMemberId,
-          relationship_type: relType,
-        });
-        links.push({
-          person_id: newMemberId,
-          related_person_id: sibId,
-          relationship_type: INVERSE_RELATIONSHIP[relType],
-        });
-      }
+      addLink(sibId, newMemberId, relType);
     }
   }
 
-  // If adding a CHILD type → auto-link to spouse
+  // ── Rule 2: Adding PARENT → auto-link as spouse of existing other parent ──
+  if (PARENT_TYPES.includes(relType)) {
+    const existingParents = findParents(allRelationships, relatedTo);
+    for (const parentId of existingParents) {
+      if (parentId === newMemberId) continue;
+      addLink(newMemberId, parentId, "spouse");
+    }
+  }
+
+  // ── Rule 3: Adding CHILD → also add child to spouse ──
   if (CHILD_TYPES.includes(relType)) {
     const spouses = findSpouses(allRelationships, relatedTo);
     for (const spouseId of spouses) {
-      if (
-        !hasDuplicateRelationship(
-          allRelationships,
-          spouseId,
-          newMemberId,
-          relType
-        )
-      ) {
-        links.push({
-          person_id: spouseId,
-          related_person_id: newMemberId,
-          relationship_type: relType,
-        });
-        links.push({
-          person_id: newMemberId,
-          related_person_id: spouseId,
-          relationship_type: INVERSE_RELATIONSHIP[relType],
-        });
-      }
+      addLink(spouseId, newMemberId, relType);
     }
   }
 
-  // If adding a SIBLING → auto-link to existing parents of relatedTo
+  // ── Rule 4: Adding SIBLING → auto-link to existing parents ──
   if (SIBLING_TYPES.includes(relType)) {
-    for (const rel of allRelationships) {
-      // Find parents of relatedTo
-      if (
-        rel.related_person_id === relatedTo &&
-        CHILD_TYPES.includes(rel.relationship_type as RelationshipType)
-      ) {
-        // rel.person_id is a parent of relatedTo
-        const parentId = rel.person_id;
-        const parentType = INVERSE_RELATIONSHIP[rel.relationship_type as RelationshipType];
-        if (
-          !hasDuplicateRelationship(
-            allRelationships,
-            newMemberId,
-            parentId,
-            parentType
-          )
-        ) {
-          links.push({
-            person_id: newMemberId,
-            related_person_id: parentId,
-            relationship_type: parentType,
-          });
-          links.push({
-            person_id: parentId,
-            related_person_id: newMemberId,
-            relationship_type: rel.relationship_type as RelationshipType,
-          });
-        }
-      }
-      if (
-        rel.person_id === relatedTo &&
-        PARENT_TYPES.includes(rel.relationship_type as RelationshipType)
-      ) {
-        const parentId = rel.related_person_id;
-        const parentType = rel.relationship_type as RelationshipType;
-        if (
-          !hasDuplicateRelationship(
-            allRelationships,
-            newMemberId,
-            parentId,
-            parentType
-          )
-        ) {
-          links.push({
-            person_id: newMemberId,
-            related_person_id: parentId,
-            relationship_type: INVERSE_RELATIONSHIP[parentType],
-          });
-          links.push({
-            person_id: parentId,
-            related_person_id: newMemberId,
-            relationship_type: parentType,
-          });
-        }
-      }
+    const existingParents = findParents(allRelationships, relatedTo);
+    for (const parentId of existingParents) {
+      // Add parent relationship: new sibling → existing parent
+      const parentRelType = "parent" as RelationshipType;
+      addLink(newMemberId, parentId, parentRelType);
+    }
+  }
+
+  // ── Rule 5: Adding SPOUSE → auto-link existing children to new spouse ──
+  if (relType === "spouse") {
+    const existingChildren = findChildren(allRelationships, relatedTo);
+    for (const childId of existingChildren) {
+      if (childId === newMemberId) continue;
+      // New spouse becomes parent of existing children
+      const parentRelType = "parent" as RelationshipType;
+      addLink(childId, newMemberId, parentRelType);
     }
   }
 

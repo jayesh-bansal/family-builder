@@ -83,10 +83,44 @@ export async function addFamilyMember(
       }
 
       // Fetch existing relationships for auto-link computation
-      const { data: existingRels } = await admin
+      // We need relationships of relatedTo AND their connected members (parents, spouses, siblings, children)
+      // to properly detect existing parents, spouses, and children for auto-linking
+      const { data: directRels } = await admin
         .from("relationships")
         .select("*")
         .or(`person_id.eq.${relatedTo},related_person_id.eq.${relatedTo}`);
+
+      // Also fetch relationships of relatedTo's connected members (for spouse/parent detection)
+      const connectedIds = new Set<string>();
+      for (const r of directRels || []) {
+        connectedIds.add(r.person_id);
+        connectedIds.add(r.related_person_id);
+      }
+      connectedIds.delete(relatedTo);
+      connectedIds.delete(newMemberId);
+
+      let existingRels = directRels || [];
+      if (connectedIds.size > 0) {
+        const ids = Array.from(connectedIds);
+        const orClauses = [
+          ...ids.map((id) => `person_id.eq.${id}`),
+          ...ids.map((id) => `related_person_id.eq.${id}`),
+        ].join(",");
+        const { data: extendedRels } = await admin
+          .from("relationships")
+          .select("*")
+          .or(orClauses);
+        if (extendedRels) {
+          // Merge and deduplicate
+          const relIds = new Set(existingRels.map((r) => r.id));
+          for (const r of extendedRels) {
+            if (!relIds.has(r.id)) {
+              existingRels.push(r);
+              relIds.add(r.id);
+            }
+          }
+        }
+      }
 
       // Primary bidirectional relationships
       const allInserts: {

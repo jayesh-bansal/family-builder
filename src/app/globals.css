@@ -57,13 +57,11 @@ body {
   }
 }
 
-/* Mobile touch targets — minimum 44x44px */
+/* Mobile touch targets — minimum 44px height for form/action elements */
 @media (pointer: coarse) {
   button,
-  a,
   [role="button"] {
     min-height: 44px;
-    min-width: 44px;
   }
 }
 
