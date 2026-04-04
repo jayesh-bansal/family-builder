@@ -16,6 +16,10 @@ export type RelationshipType =
 
 export type TreeVisibility = "public" | "family_only" | "private";
 
+export type Gender = "male" | "female" | "other";
+
+export type FamilyVariant = "global" | "indian";
+
 export type InvitationStatus = "pending" | "accepted" | "declined" | "expired";
 
 export type NotificationType =
@@ -44,9 +48,11 @@ export interface Profile {
   phone: string | null;
   email: string | null;
   social_links: SocialLinks | null;
+  gender: Gender | null;
   is_placeholder: boolean;
   created_by: string | null;
   tree_visibility: TreeVisibility;
+  family_variant: FamilyVariant;
   language_preference: string;
   created_at: string;
   updated_at: string;

@@ -6,12 +6,22 @@ import {
   ChevronRight,
   Cake,
   Calendar as CalendarIcon,
+  MessageCircle,
 } from "lucide-react";
 import Avatar from "./Avatar";
 import type { Profile } from "@/lib/types";
 
 interface BirthdayCalendarProps {
   members: Profile[];
+}
+
+function isLeapYear(y: number) {
+  return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+}
+
+function safeDate(y: number, m: number, d: number) {
+  if (m === 1 && d === 29 && !isLeapYear(y)) return new Date(y, 1, 28);
+  return new Date(y, m, d);
 }
 
 export default function BirthdayCalendar({ members }: BirthdayCalendarProps) {
@@ -64,27 +74,20 @@ export default function BirthdayCalendar({ members }: BirthdayCalendarProps) {
     setViewYear(today.getFullYear());
   };
 
-  // Upcoming birthdays (next 30 days)
+  // Upcoming birthdays (next 60 days)
   const upcoming = useMemo(() => {
     const result: { member: Profile; date: Date; daysUntil: number }[] = [];
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     members.forEach((m) => {
       if (!m.birth_date) return;
       const bd = new Date(m.birth_date + "T00:00:00");
-      const thisYear = new Date(
-        today.getFullYear(),
-        bd.getMonth(),
-        bd.getDate()
-      );
-      let next = thisYear;
-      if (next < today) {
-        next = new Date(
-          today.getFullYear() + 1,
-          bd.getMonth(),
-          bd.getDate()
-        );
+      let next = safeDate(today.getFullYear(), bd.getMonth(), bd.getDate());
+      if (next < todayStart) {
+        next = safeDate(today.getFullYear() + 1, bd.getMonth(), bd.getDate());
       }
-      const diff = Math.ceil(
-        (next.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      // Use date-only diff to avoid time-of-day rounding issues
+      const diff = Math.round(
+        (next.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24)
       );
       if (diff <= 60) {
         result.push({ member: m, date: next, daysUntil: diff });
@@ -196,10 +199,19 @@ export default function BirthdayCalendar({ members }: BirthdayCalendarProps) {
             {upcoming.slice(0, 5).map(({ member, date, daysUntil }) => {
               const bd = new Date(member.birth_date + "T00:00:00");
               const age = date.getFullYear() - bd.getFullYear();
+              const wishMsg = encodeURIComponent(
+                daysUntil === 0
+                  ? `Happy Birthday, ${member.full_name}! 🎂🎉 Wishing you an amazing day!${age > 0 ? ` Welcome to ${age}!` : ""}`
+                  : `Hey ${member.full_name}! Just wanted to let you know — your birthday is coming up${daysUntil === 1 ? " tomorrow" : ` in ${daysUntil} days`}! Can't wait to celebrate with you! 🎉`
+              );
+              const waPhone = member.phone?.replace(/[^+\d]/g, "") || "";
+              const waUrl = waPhone
+                ? `https://wa.me/${waPhone}?text=${wishMsg}`
+                : `https://wa.me/?text=${wishMsg}`;
               return (
                 <div
                   key={member.id}
-                  className="flex items-center gap-3 px-3 py-2 rounded-xl bg-background border border-border"
+                  className="flex items-center gap-2 sm:gap-3 px-3 py-2 rounded-xl bg-background border border-border"
                 >
                   <Avatar
                     src={member.avatar_url}
@@ -218,6 +230,15 @@ export default function BirthdayCalendar({ members }: BirthdayCalendarProps) {
                       {age > 0 && ` — turning ${age}`}
                     </p>
                   </div>
+                  <a
+                    href={waUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 p-1.5 rounded-lg text-[#25D366] hover:bg-[#25D366]/10 transition-colors cursor-pointer"
+                    title={`Send birthday wish to ${member.full_name}`}
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                  </a>
                   <span
                     className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${
                       daysUntil === 0

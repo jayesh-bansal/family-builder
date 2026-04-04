@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale } from "next-intl";
 import { Heart, CheckCircle, XCircle, AlertCircle } from "lucide-react";
-import BanyanLogo from "@/components/ui/BanyanLogo";
+import KutumbLogo from "@/components/ui/KutumbLogo";
 import {
   acceptInvitation,
   declineInvitation,
@@ -143,7 +143,7 @@ export default function JoinPageContent({
 
   return (
     <Card className="w-full max-w-md text-center">
-      <BanyanLogo className="h-12 w-12 mx-auto mb-3" />
+      <KutumbLogo className="h-12 w-12 mx-auto mb-3" />
       <h1 className="text-2xl font-bold text-primary mb-2">
         Family Tree Invitation
       </h1>

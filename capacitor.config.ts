@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "com.banyan.app",
-  appName: "Banyan",
+  appId: "com.kutumb.app",
+  appName: "Kutumb",
   webDir: "out",
   server: {
     // Point to your deployed Next.js URL in production.

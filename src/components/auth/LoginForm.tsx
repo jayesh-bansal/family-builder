@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Link, useRouter } from "@/i18n/navigation";
-import { useTranslations } from "next-intl";
-import BanyanLogo from "@/components/ui/BanyanLogo";
+import { useTranslations, useLocale } from "next-intl";
+import KutumbLogo from "@/components/ui/KutumbLogo";
 import { createClient } from "@/lib/supabase/client";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -13,6 +13,7 @@ type AuthMethod = "email" | "phone";
 
 export default function LoginForm() {
   const t = useTranslations("auth");
+  const locale = useLocale();
   const router = useRouter();
   const [method, setMethod] = useState<AuthMethod>("email");
 
@@ -57,7 +58,7 @@ export default function LoginForm() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/${locale}/auth/callback`,
       },
     });
   };
@@ -70,7 +71,7 @@ export default function LoginForm() {
   return (
     <Card className="w-full max-w-md">
       <div className="text-center mb-6">
-        <BanyanLogo className="h-10 w-10 mx-auto mb-2" />
+        <KutumbLogo className="h-10 w-10 mx-auto mb-2" />
         <h1 className="text-2xl font-bold text-primary">{t("login")}</h1>
       </div>
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import {
@@ -10,8 +11,15 @@ import {
   Info,
   CheckCheck,
   ThumbsDown,
+  CheckCircle,
+  XCircle,
+  Loader2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import {
+  acceptInvitation,
+  declineInvitation,
+} from "@/lib/actions/invitation";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import type { Notification } from "@/lib/types";
@@ -33,7 +41,15 @@ function getNotificationIcon(notification: Notification) {
   if (notification.data && "declined_by" in notification.data) {
     return typeIcons.declined;
   }
-  return typeIcons[notification.type] || <Bell className="h-5 w-5 text-text-light" />;
+  // Invitation received — show mail icon
+  if (notification.data && "token" in notification.data) {
+    return <Mail className="h-5 w-5 text-accent" />;
+  }
+  return (
+    typeIcons[notification.type] || (
+      <Bell className="h-5 w-5 text-text-light" />
+    )
+  );
 }
 
 function timeAgo(dateStr: string): string {
@@ -51,12 +67,31 @@ function timeAgo(dateStr: string): string {
   return date.toLocaleDateString();
 }
 
+/**
+ * Check if a notification is an actionable invitation (can accept/decline).
+ * Distinguished from regular invite notifications by having a token in data.
+ */
+function isActionableInvite(notification: Notification): boolean {
+  return (
+    notification.type === "invite" &&
+    !!notification.data &&
+    "token" in notification.data &&
+    "invitation_id" in notification.data &&
+    !("declined_by" in notification.data)
+  );
+}
+
 export default function NotificationsContent({
   notifications,
 }: NotificationsContentProps) {
   const t = useTranslations("notifications");
   const locale = useLocale();
   const router = useRouter();
+
+  // Track action state per notification
+  const [actionStates, setActionStates] = useState<
+    Record<string, "loading" | "accepted" | "declined" | "error" | null>
+  >({});
 
   const markAsRead = async (id: string) => {
     const supabase = createClient();
@@ -81,7 +116,75 @@ export default function NotificationsContent({
     router.refresh();
   };
 
+  const handleAcceptInvite = async (notification: Notification) => {
+    const invitationId = notification.data?.invitation_id as string;
+    const token = notification.data?.token as string;
+
+    if (!invitationId || !token) return;
+
+    // Prevent double-click: if already processing, bail out
+    if (actionStates[notification.id] === "loading") return;
+
+    setActionStates((prev) => ({ ...prev, [notification.id]: "loading" }));
+
+    const result = await acceptInvitation(invitationId, token);
+
+    if (result.success) {
+      setActionStates((prev) => ({ ...prev, [notification.id]: "accepted" }));
+      // Mark notification as read
+      if (!notification.is_read) {
+        await markAsRead(notification.id);
+      }
+      // Refresh after a short delay to show the success state
+      setTimeout(() => router.refresh(), 1500);
+    } else {
+      setActionStates((prev) => ({ ...prev, [notification.id]: "error" }));
+      setTimeout(
+        () =>
+          setActionStates((prev) => ({ ...prev, [notification.id]: null })),
+        3000
+      );
+    }
+  };
+
+  const handleDeclineInvite = async (notification: Notification) => {
+    const invitationId = notification.data?.invitation_id as string;
+    const token = notification.data?.token as string;
+
+    if (!invitationId || !token) return;
+
+    // Prevent double-click
+    if (actionStates[notification.id] === "loading") return;
+
+    setActionStates((prev) => ({ ...prev, [notification.id]: "loading" }));
+
+    const result = await declineInvitation(invitationId, token);
+
+    if (result.success) {
+      setActionStates((prev) => ({ ...prev, [notification.id]: "declined" }));
+      if (!notification.is_read) {
+        await markAsRead(notification.id);
+      }
+      setTimeout(() => router.refresh(), 1500);
+    } else {
+      setActionStates((prev) => ({ ...prev, [notification.id]: "error" }));
+      setTimeout(
+        () =>
+          setActionStates((prev) => ({ ...prev, [notification.id]: null })),
+        3000
+      );
+    }
+  };
+
   const handleNotificationClick = (notification: Notification) => {
+    // Don't navigate for actionable invites (buttons handle the action)
+    if (isActionableInvite(notification)) {
+      if (!notification.is_read) {
+        markAsRead(notification.id);
+      }
+      return;
+    }
+
     // Navigate based on notification type
     if (notification.type === "tree_linked") {
       router.push(`/${locale}/tree`);
@@ -125,31 +228,96 @@ export default function NotificationsContent({
         </Card>
       ) : (
         <div className="space-y-2">
-          {notifications.map((notification) => (
-            <Card
-              key={notification.id}
-              className={`flex items-start gap-3 !p-4 transition-colors cursor-pointer hover:border-accent/30 ${
-                !notification.is_read ? "bg-accent/5 border-accent/20" : ""
-              }`}
-              onClick={() => handleNotificationClick(notification)}
-            >
-              <div className="pt-0.5">{getNotificationIcon(notification)}</div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-text">
-                  {notification.title}
-                </p>
-                <p className="text-sm text-text-light mt-0.5">
-                  {notification.message}
-                </p>
-                <p className="text-xs text-text-light/60 mt-1">
-                  {timeAgo(notification.created_at)}
-                </p>
-              </div>
-              {!notification.is_read && (
-                <div className="h-2.5 w-2.5 rounded-full bg-accent shrink-0 mt-1.5" />
-              )}
-            </Card>
-          ))}
+          {notifications.map((notification) => {
+            const actionable = isActionableInvite(notification);
+            const actionState = actionStates[notification.id];
+
+            return (
+              <Card
+                key={notification.id}
+                className={`flex flex-col !p-4 transition-colors ${
+                  actionable ? "" : "cursor-pointer hover:border-accent/30"
+                } ${
+                  !notification.is_read ? "bg-accent/5 border-accent/20" : ""
+                }`}
+                onClick={() =>
+                  !actionable && handleNotificationClick(notification)
+                }
+              >
+                <div className="flex items-start gap-3">
+                  <div className="pt-0.5">
+                    {getNotificationIcon(notification)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-text">
+                      {notification.title}
+                    </p>
+                    <p className="text-sm text-text-light mt-0.5">
+                      {notification.message}
+                    </p>
+                    <p className="text-xs text-text-light/60 mt-1">
+                      {timeAgo(notification.created_at)}
+                    </p>
+                  </div>
+                  {!notification.is_read && !actionable && (
+                    <div className="h-2.5 w-2.5 rounded-full bg-accent shrink-0 mt-1.5" />
+                  )}
+                </div>
+
+                {/* Inline accept/decline buttons for invitation notifications */}
+                {actionable && (
+                  <div className="mt-3 ml-8">
+                    {actionState === "loading" ? (
+                      <div className="flex items-center gap-2 text-sm text-text-light">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Processing...
+                      </div>
+                    ) : actionState === "accepted" ? (
+                      <div className="flex items-center gap-2 text-sm text-success">
+                        <CheckCircle className="h-4 w-4" />
+                        Invitation accepted! Trees connected.
+                      </div>
+                    ) : actionState === "declined" ? (
+                      <div className="flex items-center gap-2 text-sm text-text-light">
+                        <XCircle className="h-4 w-4" />
+                        Invitation declined.
+                      </div>
+                    ) : actionState === "error" ? (
+                      <div className="flex items-center gap-2 text-sm text-error">
+                        <XCircle className="h-4 w-4" />
+                        Something went wrong. Try again.
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAcceptInvite(notification);
+                          }}
+                          disabled={actionState === "loading"}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          Accept
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeclineInvite(notification);
+                          }}
+                          disabled={actionState === "loading"}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-background border border-border text-text-light text-sm font-medium hover:bg-surface transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <XCircle className="h-4 w-4" />
+                          Decline
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

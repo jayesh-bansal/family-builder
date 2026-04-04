@@ -16,7 +16,7 @@ export default function AppShell({ user, children }: AppShellProps) {
       <Navbar user={user} />
       <main className="flex-1">{children}</main>
       <footer className="border-t border-border py-6 text-center text-sm text-text-light">
-        Banyan &mdash; Your family, one rooted tree.
+        Kutumb &mdash; Your family, connected forever.
       </footer>
       <AppLifecycleManager />
       {user && <PushNotificationManager userId={user.id} />}

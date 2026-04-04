@@ -1,8 +1,8 @@
 /**
- * Banyan tree logo — a stylized tree with spreading roots and a wide canopy.
+ * Kutumb tree logo — a stylized tree with spreading roots and a wide canopy.
  * Used as the app's brand icon across Navbar, landing, auth, etc.
  */
-export default function BanyanLogo({
+export default function KutumbLogo({
   className = "h-8 w-8",
 }: {
   className?: string;

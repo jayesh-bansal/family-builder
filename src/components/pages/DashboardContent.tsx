@@ -3,7 +3,7 @@
 import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { Users, Mail, Eye } from "lucide-react";
-import BanyanLogo from "@/components/ui/BanyanLogo";
+import KutumbLogo from "@/components/ui/KutumbLogo";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Avatar from "@/components/ui/Avatar";
@@ -76,7 +76,7 @@ export default function DashboardContent({
         {/* Left: Quick Actions */}
         <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Card className="flex flex-col items-center text-center gap-3">
-            <BanyanLogo className="h-10 w-10" />
+            <KutumbLogo className="h-10 w-10" />
             <h3 className="font-bold text-lg">{t("viewTree")}</h3>
             <Link href="/tree">
               <Button>{t("viewTree")}</Button>

@@ -18,7 +18,7 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import Avatar from "@/components/ui/Avatar";
-import type { Profile, TreeVisibility, SocialLinks } from "@/lib/types";
+import type { Profile, TreeVisibility, SocialLinks, Gender, FamilyVariant } from "@/lib/types";
 
 interface ProfileFormProps {
   profile: Profile;
@@ -90,7 +90,9 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
     birth_date: profile.birth_date || "",
     location: profile.location || "",
     phone: profile.phone || "",
+    gender: (profile.gender || "") as Gender | "",
     tree_visibility: profile.tree_visibility,
+    family_variant: (profile.family_variant || "global") as FamilyVariant,
   });
   const [socials, setSocials] = useState<SocialLinks>(
     profile.social_links || {}
@@ -154,7 +156,9 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
         birth_date: form.birth_date || null,
         location: form.location || null,
         phone: form.phone || null,
+        gender: form.gender || null,
         tree_visibility: form.tree_visibility,
+        family_variant: form.family_variant,
         social_links: hasSocials ? cleanedSocials : null,
       })
       .eq("id", profile.id);
@@ -235,13 +239,13 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
 
   return (
     <Card>
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-4 mb-6 min-w-0">
         <Avatar src={profile.avatar_url} name={profile.full_name} size="xl" />
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold text-primary">
             {t("editProfile")}
           </h1>
-          <p className="text-text-light">{authEmail || authPhone || ""}</p>
+          <p className="text-text-light truncate">{authEmail || authPhone || ""}</p>
         </div>
       </div>
 
@@ -288,6 +292,53 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
           onChange={(e) => updateField("phone", e.target.value)}
           placeholder="+91 98765 43210"
         />
+        {/* Gender */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium text-text">Gender</label>
+          <div className="flex flex-wrap gap-2 sm:gap-3">
+            {(
+              [
+                { value: "male", label: "Male" },
+                { value: "female", label: "Female" },
+                { value: "other", label: "Other" },
+              ] as const
+            ).map((opt) => (
+              <label
+                key={opt.value}
+                className={`flex-1 min-w-[80px] flex items-center justify-center gap-2 px-2 sm:px-3 py-2.5 rounded-xl border-2 text-sm font-medium cursor-pointer transition-all ${
+                  form.gender === opt.value
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-surface text-text-light hover:border-primary/30"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="gender"
+                  value={opt.value}
+                  checked={form.gender === opt.value}
+                  onChange={(e) => updateField("gender", e.target.value)}
+                  className="sr-only"
+                />
+                {opt.label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Family Naming Style */}
+        <Select
+          id="family_variant"
+          label="Family Naming Style"
+          value={form.family_variant}
+          onChange={(e) =>
+            updateField("family_variant", e.target.value as FamilyVariant)
+          }
+          options={[
+            { value: "global", label: "Global (Father, Mother, Uncle, Aunt...)" },
+            { value: "indian", label: "Indian (Papa, Mummy, Chacha, Bua...)" },
+          ]}
+        />
+
         <Select
           id="tree_visibility"
           label={t("visibility")}

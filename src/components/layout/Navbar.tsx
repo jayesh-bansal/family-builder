@@ -3,7 +3,7 @@
 import { Link, useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { Bell, LogOut, Menu, X } from "lucide-react";
-import BanyanLogo from "@/components/ui/BanyanLogo";
+import KutumbLogo from "@/components/ui/KutumbLogo";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Avatar from "@/components/ui/Avatar";
@@ -31,7 +31,7 @@ export default function Navbar({ user }: NavbarProps) {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2">
-            <BanyanLogo className="h-7 w-7" />
+            <KutumbLogo className="h-7 w-7" />
             <span className="text-xl font-bold text-primary">
               {t("common.appName")}
             </span>

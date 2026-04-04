@@ -4,13 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { X, AlertTriangle, Users } from "lucide-react";
-import { v4 as uuidv4 } from "uuid";
-import { createClient } from "@/lib/supabase/client";
+import { addFamilyMember } from "@/lib/actions/tree";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
-import type { Profile, RelationshipType, Relationship } from "@/lib/types";
-import { INVERSE_RELATIONSHIP } from "@/lib/types";
+import type { Profile, RelationshipType, Relationship, Gender } from "@/lib/types";
 import {
   hasDuplicateRelationship,
   hasContradiction,
@@ -51,8 +49,9 @@ export default function AddMemberModal({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isPlaceholder, setIsPlaceholder] = useState(false);
+  const [isPlaceholder, setIsPlaceholder] = useState(true);
   const [isPrimary, setIsPrimary] = useState(true);
+  const [gender, setGender] = useState<Gender | "">("");
   const [form, setForm] = useState({
     full_name: "",
     email: "",
@@ -81,23 +80,27 @@ export default function AddMemberModal({
     setError(null);
     setLoading(true);
 
-    const supabase = createClient();
-    const newMemberId = isPlaceholder ? uuidv4() : currentUser.id;
-    const relatedTo = form.related_to;
     const relType = form.relationship_type;
-    const targetId = isPlaceholder ? newMemberId : relatedTo;
+    const relatedTo = form.related_to;
 
-    // --- Validation ---
+    // --- Client-side validation ---
+
+    // 0. Gender is required
+    if (!gender) {
+      setError("Please select a gender for this member.");
+      setLoading(false);
+      return;
+    }
 
     // 1. Prevent duplicate relationships
     if (
+      !isPlaceholder &&
       hasDuplicateRelationship(
         relationships,
         relatedTo,
-        isPlaceholder ? "__skip__" : currentUser.id,
+        currentUser.id,
         relType
-      ) &&
-      !isPlaceholder
+      )
     ) {
       setError(
         `This "${relType.replace("_", " ")}" relationship already exists.`
@@ -121,99 +124,23 @@ export default function AddMemberModal({
       }
     }
 
-    // --- Create ---
+    // --- Call server action ---
+    const result = await addFamilyMember({
+      fullName: form.full_name,
+      email: form.email || undefined,
+      birthDate: form.birth_date || undefined,
+      location: form.location || undefined,
+      gender: gender as Gender,
+      relationshipType: relType,
+      relatedTo,
+      isPlaceholder,
+      isPrimary,
+    });
 
-    if (isPlaceholder) {
-      // Create placeholder profile
-      const { error: profileError } = await supabase.from("profiles").insert({
-        id: newMemberId,
-        full_name: form.full_name,
-        email: form.email || null,
-        birth_date: form.birth_date || null,
-        location: form.location || null,
-        is_placeholder: true,
-        created_by: currentUser.id,
-      });
-
-      if (profileError) {
-        setError("Failed to create member. Please try again.");
-        setLoading(false);
-        return;
-      }
-
-      // Primary bidirectional relationships
-      const allInserts = [
-        {
-          person_id: relatedTo,
-          related_person_id: newMemberId,
-          relationship_type: relType,
-          is_confirmed: true,
-          is_primary: isPrimary,
-          created_by: currentUser.id,
-        },
-        {
-          person_id: newMemberId,
-          related_person_id: relatedTo,
-          relationship_type: INVERSE_RELATIONSHIP[relType],
-          is_confirmed: true,
-          is_primary: isPrimary,
-          created_by: currentUser.id,
-        },
-      ];
-
-      // Auto-link relationships (e.g., parent → siblings, child → spouse)
-      const autoLinkInserts = computeAutoLinks(
-        relationships,
-        relatedTo,
-        newMemberId,
-        relType
-      );
-      for (const link of autoLinkInserts) {
-        allInserts.push({
-          ...link,
-          is_confirmed: true,
-          is_primary: isPrimary,
-          created_by: currentUser.id,
-        });
-      }
-
-      const { error: relError } = await supabase
-        .from("relationships")
-        .insert(allInserts);
-      if (relError) {
-        setError("Failed to create relationships. Please try again.");
-        setLoading(false);
-        return;
-      }
-    } else {
-      // Non-placeholder: create relationship between existing members
-      const allInserts = [
-        {
-          person_id: relatedTo,
-          related_person_id: currentUser.id,
-          relationship_type: relType,
-          is_confirmed: false,
-          is_primary: isPrimary,
-          created_by: currentUser.id,
-        },
-        {
-          person_id: currentUser.id,
-          related_person_id: relatedTo,
-          relationship_type: INVERSE_RELATIONSHIP[relType],
-          is_confirmed: false,
-          is_primary: isPrimary,
-          created_by: currentUser.id,
-        },
-      ];
-
-      const { error: relError } = await supabase
-        .from("relationships")
-        .insert(allInserts);
-      if (relError) {
-        setError("Failed to create relationship. Please try again.");
-        setLoading(false);
-        return;
-      }
+    if (result.error) {
+      setError(result.error);
+      setLoading(false);
+      return;
     }
 
     setLoading(false);
@@ -227,7 +154,7 @@ export default function AddMemberModal({
   }));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40">
       <div className="bg-surface rounded-2xl border border-border shadow-xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-primary">{t("addMember")}</h2>
@@ -267,6 +194,44 @@ export default function AddMemberModal({
             value={form.location}
             onChange={(e) => updateField("location", e.target.value)}
           />
+
+          {/* Gender selection (required) */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-text">
+              Gender <span className="text-error">*</span>
+            </label>
+            <div className="flex flex-wrap gap-2 sm:gap-3">
+              {(
+                [
+                  { value: "male", label: "Male" },
+                  { value: "female", label: "Female" },
+                  { value: "other", label: "Other" },
+                ] as const
+              ).map((opt) => (
+                <label
+                  key={opt.value}
+                  className={`flex-1 min-w-[80px] flex items-center justify-center gap-2 px-2 sm:px-3 py-2.5 rounded-xl border-2 text-sm font-medium cursor-pointer transition-all ${
+                    gender === opt.value
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-surface text-text-light hover:border-primary/30"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="gender"
+                    value={opt.value}
+                    checked={gender === opt.value}
+                    onChange={(e) => {
+                      setGender(e.target.value as Gender);
+                      setError(null);
+                    }}
+                    className="sr-only"
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+          </div>
 
           <Select
             id="relationship_type"

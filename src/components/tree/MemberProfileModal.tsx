@@ -10,6 +10,7 @@ import {
   Calendar,
   Ghost,
   Pencil,
+  Trash2,
   Users,
   Globe,
   ExternalLink,
@@ -26,6 +27,7 @@ interface MemberProfileModalProps {
   members: Profile[];
   isCurrentUser: boolean;
   onClose: () => void;
+  onEdit?: (member: Profile) => void;
 }
 
 const SOCIAL_CONFIG: Record<
@@ -48,6 +50,16 @@ function getSocialUrl(key: keyof SocialLinks, value: string): string {
 /**
  * Mini calendar showing a specific month with the birthday highlighted.
  */
+function isLeapYear(y: number) {
+  return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+}
+
+function safeDate(y: number, m: number, d: number) {
+  // Handle Feb 29 in non-leap years → use Feb 28
+  if (m === 1 && d === 29 && !isLeapYear(y)) return new Date(y, 1, 28);
+  return new Date(y, m, d);
+}
+
 function BirthdayMiniCalendar({ birthDate }: { birthDate: string }) {
   const date = new Date(birthDate + "T00:00:00");
   const month = date.getMonth();
@@ -63,11 +75,11 @@ function BirthdayMiniCalendar({ birthDate }: { birthDate: string }) {
 
   const dayNames = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-  // Check if birthday is upcoming this year
-  const thisYearBirthday = new Date(today.getFullYear(), month, day);
+  // Check if birthday is upcoming this year (use safe date for leap years)
+  const thisYearBirthday = safeDate(today.getFullYear(), month, day);
   const isUpcoming =
     thisYearBirthday >= today &&
-    thisYearBirthday.getTime() - today.getTime() < 30 * 24 * 60 * 60 * 1000;
+    thisYearBirthday.getTime() - today.getTime() < 60 * 24 * 60 * 60 * 1000;
 
   const age = today.getFullYear() - year;
 
@@ -90,7 +102,7 @@ function BirthdayMiniCalendar({ birthDate }: { birthDate: string }) {
         {monthName} {year}
         {age > 0 && (
           <span className="ml-1 text-text-light/60">
-            (turns {age + (thisYearBirthday >= today ? 0 : 1)})
+            (turns {thisYearBirthday >= today ? age : age + 1})
           </span>
         )}
       </p>
@@ -149,6 +161,7 @@ export default function MemberProfileModal({
   members,
   isCurrentUser,
   onClose,
+  onEdit,
 }: MemberProfileModalProps) {
   const locale = useLocale();
   const router = useRouter();
@@ -191,7 +204,7 @@ export default function MemberProfileModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -266,23 +279,23 @@ export default function MemberProfileModal({
           {/* Info fields */}
           <div className="space-y-3">
             {profile.email && (
-              <div className="flex items-center gap-3 text-sm">
+              <div className="flex items-center gap-3 text-sm min-w-0">
                 <Mail className="h-4 w-4 text-accent shrink-0" />
-                <span className="text-text">{profile.email}</span>
+                <span className="text-text truncate">{profile.email}</span>
               </div>
             )}
 
             {profile.phone && (
-              <div className="flex items-center gap-3 text-sm">
+              <div className="flex items-center gap-3 text-sm min-w-0">
                 <Phone className="h-4 w-4 text-accent shrink-0" />
-                <span className="text-text">{profile.phone}</span>
+                <span className="text-text truncate">{profile.phone}</span>
               </div>
             )}
 
             {profile.location && (
-              <div className="flex items-center gap-3 text-sm">
+              <div className="flex items-center gap-3 text-sm min-w-0">
                 <MapPin className="h-4 w-4 text-accent shrink-0" />
-                <span className="text-text">{profile.location}</span>
+                <span className="text-text truncate">{profile.location}</span>
               </div>
             )}
 
@@ -359,6 +372,21 @@ export default function MemberProfileModal({
           <p className="text-xs text-text-light text-center">
             Member since {formatDate(profile.created_at)}
           </p>
+
+          {/* Edit button for placeholder members */}
+          {profile.is_placeholder && onEdit && (
+            <Button
+              onClick={() => {
+                onClose();
+                onEdit(profile);
+              }}
+              variant="outline"
+              className="w-full"
+            >
+              <Pencil className="h-4 w-4" />
+              Edit Member
+            </Button>
+          )}
 
           {/* Edit button for current user */}
           {isCurrentUser && (

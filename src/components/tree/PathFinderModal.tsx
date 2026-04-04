@@ -101,7 +101,7 @@ export default function PathFinderModal({
     members.find((m) => m.id === targetId)?.full_name || "";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40">
       <div className="bg-surface rounded-2xl border border-border shadow-xl w-full max-w-md mx-4 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-primary flex items-center gap-2">

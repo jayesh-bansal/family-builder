@@ -1,8 +1,53 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getProfile } from "@/lib/supabase/getProfile";
 import AppShell from "@/components/layout/AppShell";
 import FamilyTreeView from "@/components/tree/FamilyTreeView";
 import SetupBanner from "@/components/tree/SetupBanner";
+
+/**
+ * Server-side BFS traversal of the full family tree.
+ * Uses admin client to bypass RLS so we can traverse the entire connected graph,
+ * not just the current user's direct relationships.
+ */
+async function getFullTreeBFS(rootUserId: string) {
+  const admin = createAdminClient();
+  const visited = new Set<string>([rootUserId]);
+  const allRels: any[] = [];
+  const relIds = new Set<string>();
+  let frontier = [rootUserId];
+
+  // Traverse up to 10 hops (covers most family trees)
+  for (let depth = 0; depth < 10 && frontier.length > 0; depth++) {
+    // Build OR clause for frontier members
+    const orClauses = [
+      ...frontier.map((id) => `person_id.eq.${id}`),
+      ...frontier.map((id) => `related_person_id.eq.${id}`),
+    ].join(",");
+
+    const { data: rels } = await admin
+      .from("relationships")
+      .select("*")
+      .or(orClauses);
+
+    const newFrontier: string[] = [];
+    for (const rel of rels || []) {
+      if (!relIds.has(rel.id)) {
+        relIds.add(rel.id);
+        allRels.push(rel);
+      }
+      for (const id of [rel.person_id, rel.related_person_id]) {
+        if (!visited.has(id)) {
+          visited.add(id);
+          newFrontier.push(id);
+        }
+      }
+    }
+    frontier = newFrontier;
+  }
+
+  return { relationships: allRels, memberIds: Array.from(visited) };
+}
 
 export default async function TreePage() {
   const profile = await getProfile();
@@ -36,35 +81,31 @@ export default async function TreePage() {
 
     members = treeMembers || [];
   } else {
-    // Fallback: direct relationships only (migration not yet run)
+    // Fallback: server-side BFS traversal using admin client
+    // This ensures we get the FULL connected tree, not just direct relationships
     migrationNeeded = true;
 
-    const [relsResult, membersResult] = await Promise.all([
-      supabase
-        .from("relationships")
-        .select("*")
-        .or(
-          `person_id.eq.${profile.id},related_person_id.eq.${profile.id},created_by.eq.${profile.id}`
-        ),
-      supabase.from("profiles").select("*").eq("id", profile.id),
-    ]);
+    try {
+      const { relationships: bfsRels, memberIds } = await getFullTreeBFS(
+        profile.id
+      );
+      relationships = bfsRels;
 
-    relationships = relsResult.data || [];
-
-    const personIds = new Set<string>([profile.id]);
-    relationships.forEach((r: any) => {
-      personIds.add(r.person_id);
-      personIds.add(r.related_person_id);
-    });
-
-    if (personIds.size > 1) {
-      const { data: relatedMembers } = await supabase
-        .from("profiles")
-        .select("*")
-        .in("id", Array.from(personIds));
-      members = relatedMembers || [];
-    } else {
-      members = membersResult.data || [];
+      if (memberIds.length > 0) {
+        const admin = createAdminClient();
+        const { data: treeMembers } = await admin
+          .from("profiles")
+          .select("*")
+          .in("id", memberIds);
+        members = treeMembers || [];
+      } else {
+        members = [profile];
+      }
+    } catch (err) {
+      console.error("BFS fallback error:", err);
+      // Ultimate fallback: just show the current user
+      members = [profile];
+      relationships = [];
     }
   }
 

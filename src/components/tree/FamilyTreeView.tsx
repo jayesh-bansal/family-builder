@@ -9,6 +9,7 @@ import {
   useNodesState,
   useEdgesState,
   BackgroundVariant,
+  MarkerType,
   type Node,
   type Edge,
 } from "@xyflow/react";
@@ -17,9 +18,12 @@ import MemberNode from "./MemberNode";
 import AddMemberModal from "./AddMemberModal";
 import PathFinderModal from "./PathFinderModal";
 import MemberProfileModal from "./MemberProfileModal";
+import EditMemberModal from "./EditMemberModal";
 import Button from "@/components/ui/Button";
 import { Plus, Route } from "lucide-react";
 import type { Profile, Relationship, RelationshipType } from "@/lib/types";
+import { computeAllRelations, getVariantConfig } from "@/lib/variants";
+import type { ComputedRelation, FamilyVariant } from "@/lib/variants";
 
 interface FamilyTreeViewProps {
   currentUser: Profile;
@@ -46,6 +50,7 @@ const EDGE_COLORS: Partial<Record<RelationshipType, string>> = {
   close_friend: "#8B5E3C",
 };
 
+/** Inverse pairs for deduplication */
 const INVERSE_PAIRS: Record<string, string> = {
   parent: "child",
   child: "parent",
@@ -60,234 +65,312 @@ const INVERSE_PAIRS: Record<string, string> = {
 };
 
 /**
- * BFS-based layout with concentric rings.
+ * Level delta when traversing from person_id to related_person_id.
  *
- * Relationship visualization:
- * - Primary relationships → solid lines (the main/closest relationship)
- * - Non-primary relationships → dotted lines (secondary relationships)
- * - Multiple relationships between same pair are shown as separate edges
- * - Bidirectional pairs (A→B "parent" + B→A "child") deduplicated into one
+ * The relationship_type describes what related_person_id IS to person_id.
+ * E.g., type="parent" → related_person IS person's parent → related is ABOVE → delta = -1
+ *
+ * Negative = above (older generation), Positive = below (younger generation), 0 = same level.
+ */
+const LEVEL_DELTA: Record<string, number> = {
+  parent: -1,
+  child: 1,
+  spouse: 0,
+  sibling: 0,
+  grandparent: -2,
+  grandchild: 2,
+  step_parent: -1,
+  step_child: 1,
+  adopted_parent: -1,
+  adopted_child: 1,
+  half_sibling: 0,
+  godparent: -1,
+  godchild: 1,
+  close_friend: 0,
+};
+
+/**
+ * Edge labels — maps both directions of a relationship pair to a single label.
+ * E.g., both "parent" and "child" map to "Parent" since the hierarchy makes direction clear.
+ */
+const EDGE_LABELS: Record<string, string> = {
+  parent: "Parent",
+  child: "Parent",
+  spouse: "Spouse",
+  sibling: "Sibling",
+  grandparent: "Grandparent",
+  grandchild: "Grandparent",
+  step_parent: "Step Parent",
+  step_child: "Step Parent",
+  adopted_parent: "Adoptive Parent",
+  adopted_child: "Adoptive Parent",
+  half_sibling: "Half Sibling",
+  godparent: "Godparent",
+  godchild: "Godparent",
+  close_friend: "Close Friend",
+};
+
+/**
+ * Hierarchical tree layout algorithm.
+ *
+ * 1. BFS from current user, assigning generational levels based on relationship types
+ * 2. Parents go above (level -1), children below (level +1), spouses/siblings same level
+ * 3. Spouses are placed adjacent to each other
+ * 4. Edges use directional handles (top/bottom for vertical, left/right for horizontal)
+ * 5. Parent→child edges have arrow markers for clear direction
  */
 function buildGraph(
   members: Profile[],
   relationships: Relationship[],
-  currentUserId: string
+  currentUserId: string,
+  relations: Map<string, ComputedRelation>,
+  myPrefix: string
 ): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
   if (members.length === 0) return { nodes, edges };
 
-  // Build adjacency for BFS
-  const adjacency = new Map<string, Set<string>>();
-  members.forEach((m) => adjacency.set(m.id, new Set()));
+  const memberMap = new Map(members.map((m) => [m.id, m]));
 
-  relationships.forEach((r) => {
-    adjacency.get(r.person_id)?.add(r.related_person_id);
-    adjacency.get(r.related_person_id)?.add(r.person_id);
-  });
+  // ── Step 1: Build adjacency with level deltas ──
+  const adjacency = new Map<
+    string,
+    { neighbor: string; delta: number }[]
+  >();
 
-  // BFS from current user
-  const distances = new Map<string, number>();
+  for (const rel of relationships) {
+    const delta = LEVEL_DELTA[rel.relationship_type] ?? 0;
+    if (!adjacency.has(rel.person_id))
+      adjacency.set(rel.person_id, []);
+    adjacency.get(rel.person_id)!.push({
+      neighbor: rel.related_person_id,
+      delta,
+    });
+  }
+
+  // ── Step 2: BFS from current user to assign generational levels ──
+  const levels = new Map<string, number>();
+  levels.set(currentUserId, 0);
   const queue: string[] = [currentUserId];
-  distances.set(currentUserId, 0);
 
   while (queue.length > 0) {
     const current = queue.shift()!;
-    const dist = distances.get(current)!;
-    const neighbors = adjacency.get(current) || new Set();
-    for (const neighbor of neighbors) {
-      if (!distances.has(neighbor)) {
-        distances.set(neighbor, dist + 1);
+    const currentLevel = levels.get(current)!;
+
+    for (const { neighbor, delta } of adjacency.get(current) || []) {
+      if (!levels.has(neighbor)) {
+        levels.set(neighbor, currentLevel + delta);
         queue.push(neighbor);
       }
     }
   }
 
-  // Handle disconnected members
+  // Handle disconnected members (no path from current user)
   members.forEach((m) => {
-    if (!distances.has(m.id)) distances.set(m.id, 999);
+    if (!levels.has(m.id)) levels.set(m.id, 999);
   });
 
-  // Group by ring
-  const rings = new Map<number, string[]>();
-  distances.forEach((dist, id) => {
-    if (!rings.has(dist)) rings.set(dist, []);
-    rings.get(dist)!.push(id);
+  // ── Step 3: Group by level and order spouses adjacent ──
+  const levelGroups = new Map<number, string[]>();
+  levels.forEach((level, id) => {
+    if (level === 999) return; // skip disconnected
+    if (!levelGroups.has(level)) levelGroups.set(level, []);
+    levelGroups.get(level)!.push(id);
   });
 
-  const centerX = 400;
-  const centerY = 350;
-  const ringSpacing = 250;
-  const memberMap = new Map(members.map((m) => [m.id, m]));
-
-  rings.forEach((memberIds, ring) => {
-    if (ring === 0) {
-      const member = memberMap.get(memberIds[0]);
-      if (member) {
-        nodes.push({
-          id: member.id,
-          type: "member",
-          position: { x: centerX, y: centerY },
-          data: { profile: member, isCurrentUser: true },
-        });
+  // Find spouse pairs for adjacency ordering
+  const spouseOf = new Map<string, string[]>();
+  const seenSpousePairs = new Set<string>();
+  for (const rel of relationships) {
+    if (rel.relationship_type === "spouse") {
+      const key = [rel.person_id, rel.related_person_id].sort().join("-");
+      if (!seenSpousePairs.has(key)) {
+        seenSpousePairs.add(key);
+        if (!spouseOf.has(rel.person_id))
+          spouseOf.set(rel.person_id, []);
+        if (!spouseOf.has(rel.related_person_id))
+          spouseOf.set(rel.related_person_id, []);
+        spouseOf.get(rel.person_id)!.push(rel.related_person_id);
+        spouseOf.get(rel.related_person_id)!.push(rel.person_id);
       }
-      return;
+    }
+  }
+
+  // Reorder within each level: keep spouses next to each other
+  for (const [level, ids] of levelGroups) {
+    const ordered: string[] = [];
+    const placed = new Set<string>();
+
+    for (const id of ids) {
+      if (placed.has(id)) continue;
+      ordered.push(id);
+      placed.add(id);
+
+      // Place spouses right after their partner
+      for (const spouseId of spouseOf.get(id) || []) {
+        if (ids.includes(spouseId) && !placed.has(spouseId)) {
+          ordered.push(spouseId);
+          placed.add(spouseId);
+        }
+      }
     }
 
-    if (ring === 999) return; // skip disconnected
+    levelGroups.set(level, ordered);
+  }
 
-    const radius = ring * ringSpacing;
-    const count = memberIds.length;
-    const minAngle = Math.min((2 * Math.PI) / count, Math.PI / 2);
+  // ── Step 4: Position nodes ──
+  const sortedLevels = Array.from(levelGroups.keys()).sort((a, b) => a - b);
 
-    memberIds.forEach((id, i) => {
-      const member = memberMap.get(id);
-      if (!member) return;
+  const nodeWidth = 180;
+  const horizontalGap = 60;
+  const verticalGap = 220;
 
-      const angleOffset = ring % 2 === 0 ? 0 : minAngle / 2;
-      const angle = minAngle * i + angleOffset - Math.PI / 2;
-      const x = centerX + radius * Math.cos(angle);
-      const y = centerY + radius * Math.sin(angle);
+  // Find widest level to center everything
+  let maxLevelWidth = 0;
+  for (const [, ids] of levelGroups) {
+    const width = ids.length * (nodeWidth + horizontalGap) - horizontalGap;
+    maxLevelWidth = Math.max(maxLevelWidth, width);
+  }
 
-      nodes.push({
-        id: member.id,
-        type: "member",
-        position: { x, y },
-        data: { profile: member, isCurrentUser: false },
-      });
+  const centerX = maxLevelWidth / 2;
+  const positionMap = new Map<string, { x: number; y: number }>();
+
+  for (let li = 0; li < sortedLevels.length; li++) {
+    const level = sortedLevels[li];
+    const ids = levelGroups.get(level)!;
+    const levelWidth =
+      ids.length * (nodeWidth + horizontalGap) - horizontalGap;
+    const startX = centerX - levelWidth / 2;
+
+    for (let i = 0; i < ids.length; i++) {
+      const x = startX + i * (nodeWidth + horizontalGap);
+      const y = li * verticalGap;
+      positionMap.set(ids[i], { x, y });
+    }
+  }
+
+  // ── Step 5: Create nodes ──
+  for (const [id, pos] of positionMap) {
+    const member = memberMap.get(id);
+    if (!member) continue;
+
+    nodes.push({
+      id: member.id,
+      type: "member",
+      position: pos,
+      data: {
+        profile: member,
+        isCurrentUser: member.id === currentUserId,
+        relation: relations.get(member.id) || null,
+        myPrefix,
+      },
     });
-  });
+  }
 
-  // Build edges — group by canonical pair, then separate primary vs non-primary
-  // Step 1: Collect all unique relationship types per pair (deduplicate inverses)
-  const pairRelations = new Map<
-    string,
-    {
-      source: string;
-      target: string;
-      types: {
-        type: string;
-        isPrimary: boolean;
-        color: string;
-        confirmed: boolean;
-      }[];
-    }
-  >();
+  // ── Step 6: Create edges (deduplicate inverse pairs) ──
+  const processedPairs = new Set<string>();
 
-  const processedInverses = new Set<string>();
-
-  relationships.forEach((rel) => {
+  for (const rel of relationships) {
     const pairKey = [rel.person_id, rel.related_person_id].sort().join("-");
-    const relLabel = rel.relationship_type.replace(/_/g, " ");
+    const relType = rel.relationship_type;
+    const inverseType = INVERSE_PAIRS[relType];
 
-    // Check if this is the inverse of an already-processed relation
-    const inverseKey = `${pairKey}:${INVERSE_PAIRS[rel.relationship_type] || ""}`;
-    const forwardKey = `${pairKey}:${rel.relationship_type}`;
+    // Skip if this type or its inverse was already processed for this pair
+    const typeKey = `${pairKey}:${relType}`;
+    const inverseTypeKey = inverseType ? `${pairKey}:${inverseType}` : "";
 
-    if (processedInverses.has(forwardKey)) return;
-    processedInverses.add(forwardKey);
+    if (processedPairs.has(typeKey)) continue;
+    processedPairs.add(typeKey);
+    if (inverseType) processedPairs.add(inverseTypeKey);
 
-    // Also mark the inverse as processed
-    const inverseType = INVERSE_PAIRS[rel.relationship_type];
-    if (inverseType) {
-      processedInverses.add(`${pairKey}:${inverseType}`);
-    }
+    // Skip disconnected nodes
+    const level1 = levels.get(rel.person_id);
+    const level2 = levels.get(rel.related_person_id);
+    if (
+      level1 === undefined ||
+      level2 === undefined ||
+      level1 === 999 ||
+      level2 === 999
+    )
+      continue;
 
-    if (!pairRelations.has(pairKey)) {
-      pairRelations.set(pairKey, {
-        source: rel.person_id,
-        target: rel.related_person_id,
-        types: [],
-      });
-    }
+    // Get positions
+    const pos1 = positionMap.get(rel.person_id);
+    const pos2 = positionMap.get(rel.related_person_id);
+    if (!pos1 || !pos2) continue;
 
-    const group = pairRelations.get(pairKey)!;
-    const color =
-      EDGE_COLORS[rel.relationship_type as RelationshipType] || "#A47551";
+    // Determine source/target and handles based on relative position
+    let source: string;
+    let target: string;
+    let sourceHandle: string;
+    let targetHandle: string;
+    const isHorizontal = Math.abs(pos1.y - pos2.y) < 10;
 
-    // Avoid duplicate labels
-    if (!group.types.some((t) => t.type === relLabel)) {
-      group.types.push({
-        type: relLabel,
-        isPrimary: rel.is_primary !== false, // default to primary if not set
-        color,
-        confirmed: rel.is_confirmed,
-      });
-    }
-  });
-
-  // Step 2: Create edges — primary as solid, non-primary as dotted
-  pairRelations.forEach((group, pairKey) => {
-    const primaryTypes = group.types.filter((t) => t.isPrimary);
-    const secondaryTypes = group.types.filter((t) => !t.isPrimary);
-
-    // Primary edge (solid line)
-    if (primaryTypes.length > 0) {
-      const label = primaryTypes.map((t) => t.type).join(" + ");
-      const color = primaryTypes[0].color;
-      const animated = primaryTypes.some((t) => !t.confirmed);
-
-      edges.push({
-        id: `${pairKey}-primary`,
-        source: group.source,
-        target: group.target,
-        label,
-        style: {
-          stroke: color,
-          strokeWidth: 2,
-        },
-        labelStyle: { fontSize: 11, fill: "#6B5B5D", fontWeight: 600 },
-        animated,
-      });
-    }
-
-    // Non-primary edges (dotted lines) — each as a separate edge
-    secondaryTypes.forEach((t, i) => {
-      edges.push({
-        id: `${pairKey}-secondary-${i}`,
-        source: group.source,
-        target: group.target,
-        label: t.type,
-        style: {
-          stroke: t.color,
-          strokeWidth: 1.5,
-          strokeDasharray: "6 4",
-          opacity: 0.7,
-        },
-        labelStyle: {
-          fontSize: 10,
-          fill: "#9B8B8E",
-          fontStyle: "italic",
-        },
-        animated: !t.confirmed,
-      });
-    });
-
-    // If all relationships are primary (or there's only one), just show solid
-    if (primaryTypes.length === 0 && secondaryTypes.length === 0) return;
-
-    // If no explicit primary but there are types, treat the first as primary
-    if (primaryTypes.length === 0 && secondaryTypes.length > 0) {
-      const first = secondaryTypes[0];
-      // Upgrade the first secondary to solid
-      const existingEdge = edges.find(
-        (e) => e.id === `${pairKey}-secondary-0`
-      );
-      if (existingEdge) {
-        existingEdge.id = `${pairKey}-primary`;
-        existingEdge.style = {
-          stroke: first.color,
-          strokeWidth: 2,
-        };
-        existingEdge.labelStyle = {
-          fontSize: 11,
-          fill: "#6B5B5D",
-          fontWeight: 600,
-        };
+    if (isHorizontal) {
+      // Same level — horizontal connection (spouse, sibling)
+      if (pos1.x <= pos2.x) {
+        source = rel.person_id;
+        target = rel.related_person_id;
+      } else {
+        source = rel.related_person_id;
+        target = rel.person_id;
       }
+      sourceHandle = "right";
+      targetHandle = "left";
+    } else {
+      // Different levels — vertical (parent above, child below)
+      if (pos1.y < pos2.y) {
+        source = rel.person_id;
+        target = rel.related_person_id;
+      } else {
+        source = rel.related_person_id;
+        target = rel.person_id;
+      }
+      sourceHandle = "bottom";
+      targetHandle = "top";
     }
-  });
+
+    const label = EDGE_LABELS[relType] || relType.replace(/_/g, " ");
+    const color =
+      EDGE_COLORS[relType as RelationshipType] || "#A47551";
+    const isPrimary = rel.is_primary !== false;
+
+    edges.push({
+      id: `${pairKey}-${relType}`,
+      source,
+      target,
+      label,
+      type: "smoothstep",
+      sourceHandle,
+      targetHandle,
+      style: {
+        stroke: color,
+        strokeWidth: isPrimary ? 2 : 1.5,
+        ...(isPrimary
+          ? {}
+          : { strokeDasharray: "6 4", opacity: 0.7 }),
+      },
+      labelStyle: {
+        fontSize: 11,
+        fill: isPrimary ? "#6B5B5D" : "#9B8B8E",
+        fontWeight: isPrimary ? 600 : 400,
+        ...(isPrimary ? {} : { fontStyle: "italic" }),
+      },
+      animated: !rel.is_confirmed,
+      // Arrow marker for vertical edges (parent → child direction)
+      ...(!isHorizontal
+        ? {
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color,
+              width: 12,
+              height: 12,
+            },
+          }
+        : {}),
+    });
+  }
 
   return { nodes, edges };
 }
@@ -301,15 +384,34 @@ export default function FamilyTreeView({
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPathFinder, setShowPathFinder] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [editingMember, setEditingMember] = useState<Profile | null>(null);
 
   const memberMap = useMemo(
     () => new Map(members.map((m) => [m.id, m])),
     [members]
   );
 
+  // Determine variant from current user's profile setting
+  const variant: FamilyVariant =
+    (currentUser.family_variant as FamilyVariant) || "global";
+  const variantConfig = getVariantConfig(variant);
+
+  // Compute relationship labels for all members
+  const relations = useMemo(
+    () => computeAllRelations(currentUser.id, members, relationships, variant),
+    [currentUser.id, members, relationships, variant]
+  );
+
   const { nodes: initialNodes, edges: initialEdges } = useMemo(
-    () => buildGraph(members, relationships, currentUser.id),
-    [members, relationships, currentUser.id]
+    () =>
+      buildGraph(
+        members,
+        relationships,
+        currentUser.id,
+        relations,
+        variantConfig.myPrefix
+      ),
+    [members, relationships, currentUser.id, relations, variantConfig.myPrefix]
   );
 
   const [nodes, , onNodesChange] = useNodesState(initialNodes);
@@ -342,7 +444,15 @@ export default function FamilyTreeView({
       <div className="absolute bottom-20 left-4 z-10 bg-white/90 backdrop-blur rounded-xl border border-border p-3 text-xs space-y-1.5">
         <div className="flex items-center gap-2">
           <div className="w-6 h-0.5 bg-[#2A9D8F]" />
-          <span className="text-text-light">Primary relation</span>
+          <span className="text-text-light">Parent / Child</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-0.5 bg-[#E76F51]" />
+          <span className="text-text-light">Spouse</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-0.5 bg-[#F4A261]" />
+          <span className="text-text-light">Sibling</span>
         </div>
         <div className="flex items-center gap-2">
           <div
@@ -366,7 +476,7 @@ export default function FamilyTreeView({
         fitView
         fitViewOptions={{ padding: 0.3, maxZoom: 1.2 }}
         className="bg-background"
-        minZoom={0.2}
+        minZoom={0.1}
         maxZoom={2.5}
         panOnScroll={false}
         zoomOnDoubleClick={false}
@@ -400,6 +510,17 @@ export default function FamilyTreeView({
           members={members}
           isCurrentUser={selectedMemberId === currentUser.id}
           onClose={() => setSelectedMemberId(null)}
+          onEdit={(member) => {
+            setSelectedMemberId(null);
+            setEditingMember(member);
+          }}
+        />
+      )}
+
+      {editingMember && (
+        <EditMemberModal
+          member={editingMember}
+          onClose={() => setEditingMember(null)}
         />
       )}
     </div>

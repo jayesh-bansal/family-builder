@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Banyan",
+    "appName": "Kutumb",
     "loading": "Loading...",
     "save": "Save",
     "cancel": "Cancel",
@@ -12,8 +12,8 @@
     "or": "or"
   },
   "landing": {
-    "hero": "Your Family, One Rooted Tree",
-    "subtitle": "Discover your roots, grow your branches, and bring your family together — the way a Banyan grows.",
+    "hero": "Your Family, Connected Forever",
+    "subtitle": "Discover your roots, grow your branches, and bring your Kutumb together.",
     "getStarted": "Get Started",
     "login": "Log In",
     "features": {

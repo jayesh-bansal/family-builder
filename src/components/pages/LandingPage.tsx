@@ -3,7 +3,7 @@
 import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { Users, Search } from "lucide-react";
-import BanyanLogo from "@/components/ui/BanyanLogo";
+import KutumbLogo from "@/components/ui/KutumbLogo";
 import Button from "@/components/ui/Button";
 
 export default function LandingPage() {
@@ -11,7 +11,7 @@ export default function LandingPage() {
 
   const features = [
     {
-      icon: <BanyanLogo className="h-8 w-8" />,
+      icon: <KutumbLogo className="h-8 w-8" />,
       title: t("features.build.title"),
       description: t("features.build.description"),
     },
@@ -32,7 +32,7 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="max-w-5xl mx-auto px-4 py-20 text-center">
         <div className="mb-6">
-          <BanyanLogo className="h-16 w-16 mx-auto mb-4" />
+          <KutumbLogo className="h-16 w-16 mx-auto mb-4" />
         </div>
         <h1 className="text-4xl sm:text-5xl font-extrabold text-primary mb-4 leading-tight">
           {t("hero")}

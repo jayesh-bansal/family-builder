@@ -6,14 +6,14 @@ import { notFound } from "next/navigation";
 import "../globals.css";
 
 export const metadata: Metadata = {
-  title: "Banyan — Your Family, One Rooted Tree",
+  title: "Kutumb — Your Family, Connected Forever",
   description:
-    "Discover your roots, grow your branches, and bring your family together — the way a Banyan grows.",
+    "Discover your roots, grow your branches, and bring your family together with Kutumb.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Family Builder",
+    title: "Kutumb",
   },
   other: {
     "mobile-web-app-capable": "yes",
