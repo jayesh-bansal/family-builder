@@ -420,10 +420,11 @@ export default function FamilyTreeView({
   return (
     <div className="h-[calc(100dvh-8rem)] relative">
       {/* Toolbar */}
-      <div className="absolute top-4 left-4 z-10 flex gap-2">
+      <div className="absolute top-2 sm:top-4 left-2 sm:left-4 right-2 sm:right-auto z-10 flex flex-wrap gap-2 items-start">
         <Button size="sm" onClick={() => setShowAddModal(true)}>
           <Plus className="h-4 w-4" />
-          {t("addMember")}
+          <span className="hidden sm:inline">{t("addMember")}</span>
+          <span className="sm:hidden">Add</span>
         </Button>
         <Button
           size="sm"
@@ -431,17 +432,16 @@ export default function FamilyTreeView({
           onClick={() => setShowPathFinder(true)}
         >
           <Route className="h-4 w-4" />
-          Discover Path
+          <span className="hidden sm:inline">Discover Path</span>
+          <span className="sm:hidden">Path</span>
         </Button>
+        <div className="bg-white/90 backdrop-blur px-3 py-1.5 rounded-full border border-border text-sm text-secondary ml-auto sm:ml-0">
+          {members.length} {members.length === 1 ? "member" : "members"}
+        </div>
       </div>
 
-      {/* Member count badge */}
-      <div className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full border border-border text-sm text-secondary">
-        {members.length} {members.length === 1 ? "member" : "members"}
-      </div>
-
-      {/* Legend */}
-      <div className="absolute bottom-20 left-4 z-10 bg-white/90 backdrop-blur rounded-xl border border-border p-3 text-xs space-y-1.5">
+      {/* Legend — hidden on mobile to avoid overlap */}
+      <div className="absolute bottom-20 left-4 z-10 bg-white/90 backdrop-blur rounded-xl border border-border p-3 text-xs space-y-1.5 hidden sm:block">
         <div className="flex items-center gap-2">
           <div className="w-6 h-0.5 bg-[#2A9D8F]" />
           <span className="text-text-light">Parent / Child</span>
@@ -480,6 +480,7 @@ export default function FamilyTreeView({
         maxZoom={2.5}
         panOnScroll={false}
         zoomOnDoubleClick={false}
+        proOptions={{ hideAttribution: true }}
       >
         <Controls showInteractive={false} className="hidden md:flex" />
         <Background variant={BackgroundVariant.Dots} color="#E8DDD3" gap={20} />

@@ -10,6 +10,7 @@ interface AddMemberInput {
   fullName: string;
   email?: string;
   birthDate?: string;
+  deathDate?: string;
   location?: string;
   gender: "male" | "female" | "other";
   relationshipType: RelationshipType;
@@ -45,6 +46,7 @@ export async function addFamilyMember(
       fullName,
       email,
       birthDate,
+      deathDate,
       location,
       gender,
       relationshipType,
@@ -68,6 +70,7 @@ export async function addFamilyMember(
         full_name: fullName,
         email: email || null,
         birth_date: birthDate || null,
+        death_date: deathDate || null,
         location: location || null,
         gender,
         is_placeholder: true,
@@ -181,6 +184,7 @@ interface EditMemberInput {
   fullName: string;
   email?: string;
   birthDate?: string;
+  deathDate?: string;
   location?: string;
   gender?: "male" | "female" | "other";
   avatarUrl?: string;
@@ -220,6 +224,7 @@ export async function editFamilyMember(
         full_name: input.fullName,
         email: input.email || null,
         birth_date: input.birthDate || null,
+        death_date: input.deathDate || null,
         location: input.location || null,
         gender: input.gender || null,
         avatar_url: input.avatarUrl || null,

@@ -56,6 +56,7 @@ export default function AddMemberModal({
     full_name: "",
     email: "",
     birth_date: "",
+    death_date: "",
     location: "",
     relationship_type: "parent" as RelationshipType,
     related_to: currentUser.id,
@@ -129,6 +130,7 @@ export default function AddMemberModal({
       fullName: form.full_name,
       email: form.email || undefined,
       birthDate: form.birth_date || undefined,
+      deathDate: form.death_date || undefined,
       location: form.location || undefined,
       gender: gender as Gender,
       relationshipType: relType,
@@ -187,6 +189,13 @@ export default function AddMemberModal({
             type="date"
             value={form.birth_date}
             onChange={(e) => updateField("birth_date", e.target.value)}
+          />
+          <Input
+            id="death_date"
+            label="Date of Passing (if applicable)"
+            type="date"
+            value={form.death_date}
+            onChange={(e) => updateField("death_date", e.target.value)}
           />
           <Input
             id="location"

@@ -56,7 +56,8 @@ export default async function DashboardPage() {
 
   // Family members for birthday calendar (fallback to just own profile)
   const familyMembers = familyResult.data || [profile];
-  const relationshipCount = relationshipResult.count ?? 0;
+  // Each relationship is stored bidirectionally (2 rows per pair)
+  const relationshipCount = Math.floor((relationshipResult.count ?? 0) / 2);
   const treeMemberCount = familyMembers.length;
 
   return (

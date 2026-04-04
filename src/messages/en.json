@@ -63,9 +63,9 @@
     "viewTree": "View Tree",
     "addMember": "Add Member",
     "quickStats": {
-      "totalMembers": "Total Members",
+      "totalMembers": "Family Members",
       "pendingInvites": "Pending Invites",
-      "connections": "Connections"
+      "connections": "Your Relations"
     }
   },
   "tree": {

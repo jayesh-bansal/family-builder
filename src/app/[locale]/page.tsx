@@ -62,7 +62,7 @@ export default async function Home() {
   }
 
   const familyMembers = familyResult.data || [profile];
-  const relationshipCount = relationshipResult.count ?? 0;
+  const relationshipCount = Math.floor((relationshipResult.count ?? 0) / 2);
   const treeMemberCount = familyMembers.length;
 
   return (

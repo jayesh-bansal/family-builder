@@ -45,6 +45,7 @@ export default function EditMemberModal({
     full_name: member.full_name,
     email: member.email || "",
     birth_date: member.birth_date || "",
+    death_date: member.death_date || "",
     location: member.location || "",
   });
 
@@ -101,6 +102,7 @@ export default function EditMemberModal({
         fullName: form.full_name,
         email: form.email || undefined,
         birthDate: form.birth_date || undefined,
+        deathDate: form.death_date || undefined,
         location: form.location || undefined,
         gender: gender ? (gender as Gender) : undefined,
         avatarUrl,
@@ -212,6 +214,13 @@ export default function EditMemberModal({
             type="date"
             value={form.birth_date}
             onChange={(e) => updateField("birth_date", e.target.value)}
+          />
+          <Input
+            id="edit_death_date"
+            label="Date of Passing (if applicable)"
+            type="date"
+            value={form.death_date}
+            onChange={(e) => updateField("death_date", e.target.value)}
           />
           <Input
             id="edit_location"

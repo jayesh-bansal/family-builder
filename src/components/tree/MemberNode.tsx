@@ -73,9 +73,9 @@ export default function MemberNode({ data }: NodeProps) {
                 {relation.chain}
               </p>
             )}
-            {/* Computed term (e.g. "My Bua", "My Paternal Aunt") */}
+            {/* Computed term (e.g. "Bua", "Paternal Aunt") */}
             <p className="text-xs font-medium text-accent leading-tight">
-              {myPrefix} {relation.term}
+              {relation.term}
             </p>
           </div>
         )}

@@ -12,6 +12,7 @@ import {
   Pencil,
   Trash2,
   Users,
+  User,
   Globe,
   ExternalLink,
   Cake,
@@ -280,6 +281,13 @@ export default function MemberProfileModal({
 
           {/* Info fields */}
           <div className="space-y-3">
+            {profile.gender && (
+              <div className="flex items-center gap-3 text-sm min-w-0">
+                <User className="h-4 w-4 text-accent shrink-0" />
+                <span className="text-text capitalize">{profile.gender}</span>
+              </div>
+            )}
+
             {profile.email && (
               <div className="flex items-center gap-3 text-sm min-w-0">
                 <Mail className="h-4 w-4 text-accent shrink-0" />
