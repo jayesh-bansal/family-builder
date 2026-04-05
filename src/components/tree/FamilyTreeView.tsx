@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import {
   ReactFlow,
@@ -8,6 +8,8 @@ import {
   Background,
   useNodesState,
   useEdgesState,
+  useReactFlow,
+  ReactFlowProvider,
   BackgroundVariant,
   MarkerType,
   type Node,
@@ -20,7 +22,7 @@ import PathFinderModal from "./PathFinderModal";
 import MemberProfileModal from "./MemberProfileModal";
 import EditMemberModal from "./EditMemberModal";
 import Button from "@/components/ui/Button";
-import { Plus, Route } from "lucide-react";
+import { Plus, Route, Search, X } from "lucide-react";
 import type { Profile, Relationship, RelationshipType } from "@/lib/types";
 import { computeAllRelations, getVariantConfig } from "@/lib/variants";
 import type { ComputedRelation, FamilyVariant } from "@/lib/variants";
@@ -375,16 +377,45 @@ function buildGraph(
   return { nodes, edges };
 }
 
-export default function FamilyTreeView({
+function FamilyTreeViewInner({
   currentUser,
   members,
   relationships,
 }: FamilyTreeViewProps) {
   const t = useTranslations("tree");
+  const { fitView, setCenter } = useReactFlow();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPathFinder, setShowPathFinder] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [editingMember, setEditingMember] = useState<Profile | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+
+  // Search members by name, email, or phone
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase();
+    return members.filter(
+      (m) =>
+        m.full_name.toLowerCase().includes(q) ||
+        (m.email && m.email.toLowerCase().includes(q)) ||
+        (m.phone && m.phone.includes(q))
+    );
+  }, [searchQuery, members]);
+
+  const focusMember = useCallback(
+    (memberId: string) => {
+      const node = nodes.find((n) => n.id === memberId);
+      if (node) {
+        setCenter(node.position.x + 90, node.position.y + 40, { zoom: 1.5, duration: 500 });
+        setSelectedMemberId(memberId);
+        setShowSearch(false);
+        setSearchQuery("");
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [setCenter]
+  );
 
   const memberMap = useMemo(
     () => new Map(members.map((m) => [m.id, m])),
@@ -414,8 +445,14 @@ export default function FamilyTreeView({
     [members, relationships, currentUser.id, relations, variantConfig.myPrefix]
   );
 
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
-  const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // Sync nodes/edges when data changes (after router.refresh or new member added)
+  useEffect(() => {
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [initialNodes, initialEdges, setNodes, setEdges]);
 
   return (
     <div className="h-[calc(100dvh-8rem)] relative">
@@ -435,10 +472,56 @@ export default function FamilyTreeView({
           <span className="hidden sm:inline">Discover Path</span>
           <span className="sm:hidden">Path</span>
         </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setShowSearch(!showSearch)}
+        >
+          <Search className="h-4 w-4" />
+          <span className="hidden sm:inline">Search</span>
+        </Button>
         <div className="bg-white/90 backdrop-blur px-3 py-1.5 rounded-full border border-border text-sm text-secondary ml-auto sm:ml-0">
           {members.length} {members.length === 1 ? "member" : "members"}
         </div>
       </div>
+
+      {/* Search panel */}
+      {showSearch && (
+        <div className="absolute top-14 sm:top-16 left-2 sm:left-4 z-10 bg-surface border border-border rounded-xl shadow-lg p-3 w-72">
+          <div className="flex items-center gap-2 mb-2">
+            <Search className="h-4 w-4 text-text-light shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by name, email, phone..."
+              className="flex-1 text-sm bg-transparent outline-none text-text placeholder:text-text-light/50"
+              autoFocus
+            />
+            <button onClick={() => { setShowSearch(false); setSearchQuery(""); }} className="text-text-light hover:text-text cursor-pointer">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          {searchResults.length > 0 && (
+            <div className="max-h-48 overflow-y-auto space-y-1">
+              {searchResults.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => focusMember(m.id)}
+                  className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-background text-sm cursor-pointer transition-colors"
+                >
+                  <p className="font-medium text-text truncate">{m.full_name}</p>
+                  {m.email && <p className="text-xs text-text-light truncate">{m.email}</p>}
+                  {m.phone && <p className="text-xs text-text-light">{m.phone}</p>}
+                </button>
+              ))}
+            </div>
+          )}
+          {searchQuery.trim() && searchResults.length === 0 && (
+            <p className="text-xs text-text-light text-center py-2">No members found</p>
+          )}
+        </div>
+      )}
 
       {/* Legend — hidden on mobile to avoid overlap */}
       <div className="absolute bottom-20 left-4 z-10 bg-white/90 backdrop-blur rounded-xl border border-border p-3 text-xs space-y-1.5 hidden sm:block">
@@ -527,5 +610,13 @@ export default function FamilyTreeView({
         />
       )}
     </div>
+  );
+}
+
+export default function FamilyTreeView(props: FamilyTreeViewProps) {
+  return (
+    <ReactFlowProvider>
+      <FamilyTreeViewInner {...props} />
+    </ReactFlowProvider>
   );
 }

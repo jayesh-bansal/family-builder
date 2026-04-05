@@ -24,6 +24,7 @@ import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import type { Profile, Invitation, RelationshipType } from "@/lib/types";
 import { RELATIONSHIP_LABELS } from "@/lib/types";
+import { getRelationshipOptions, getRelationshipLabel, type FamilyVariant } from "@/lib/variants";
 
 interface InvitePageContentProps {
   currentUser: Profile;
@@ -32,23 +33,6 @@ interface InvitePageContentProps {
 
 type ContactMethod = "email" | "phone";
 
-const relationshipOptions = [
-  { value: "parent", label: "Parent" },
-  { value: "child", label: "Child" },
-  { value: "spouse", label: "Spouse" },
-  { value: "sibling", label: "Sibling" },
-  { value: "grandparent", label: "Grandparent" },
-  { value: "grandchild", label: "Grandchild" },
-  { value: "step_parent", label: "Step Parent" },
-  { value: "step_child", label: "Step Child" },
-  { value: "adopted_parent", label: "Adoptive Parent" },
-  { value: "adopted_child", label: "Adopted Child" },
-  { value: "half_sibling", label: "Half Sibling" },
-  { value: "godparent", label: "Godparent" },
-  { value: "godchild", label: "Godchild" },
-  { value: "close_friend", label: "Close Friend" },
-];
-
 export default function InvitePageContent({
   currentUser,
   invitations,
@@ -56,6 +40,8 @@ export default function InvitePageContent({
   const t = useTranslations("invite");
   const locale = useLocale();
   const router = useRouter();
+  const variant: FamilyVariant = (currentUser.family_variant as FamilyVariant) || "global";
+  const relationshipOptions = getRelationshipOptions(variant);
   const [recipientName, setRecipientName] = useState("");
   const [contactMethod, setContactMethod] = useState<ContactMethod>("email");
   const [email, setEmail] = useState("");

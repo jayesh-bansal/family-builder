@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import {
@@ -16,11 +17,16 @@ import {
   Globe,
   ExternalLink,
   Cake,
+  LinkIcon,
+  Loader2,
+  CheckCircle,
 } from "lucide-react";
 import Avatar from "@/components/ui/Avatar";
 import Button from "@/components/ui/Button";
-import type { Profile, Relationship, SocialLinks } from "@/lib/types";
-import { getRelationshipLabel, type FamilyVariant } from "@/lib/variants";
+import Select from "@/components/ui/Select";
+import type { Profile, Relationship, SocialLinks, RelationshipType } from "@/lib/types";
+import { getRelationshipLabel, getRelationshipOptions, type FamilyVariant } from "@/lib/variants";
+import { requestSecondaryRelation } from "@/lib/actions/tree";
 
 interface MemberProfileModalProps {
   profile: Profile;
@@ -168,6 +174,12 @@ export default function MemberProfileModal({
 }: MemberProfileModalProps) {
   const locale = useLocale();
   const router = useRouter();
+  const [showAddRelation, setShowAddRelation] = useState(false);
+  const [relationLoading, setRelationLoading] = useState(false);
+  const [relationSuccess, setRelationSuccess] = useState(false);
+  const [relationError, setRelationError] = useState<string | null>(null);
+  const [selectedRelType, setSelectedRelType] = useState<RelationshipType>("sibling");
+  const relOptions = getRelationshipOptions(familyVariant);
 
   // Find this person's direct relationships
   const memberMap = new Map(members.map((m) => [m.id, m]));
@@ -376,6 +388,71 @@ export default function MemberProfileModal({
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* Add secondary relation — only for non-placeholder, non-self members */}
+          {!isCurrentUser && !profile.is_placeholder && (
+            <div>
+              {!showAddRelation && !relationSuccess ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setShowAddRelation(true)}
+                >
+                  <LinkIcon className="h-4 w-4" />
+                  Add Relation
+                </Button>
+              ) : relationSuccess ? (
+                <div className="flex items-center gap-2 text-sm text-success bg-success/10 px-3 py-2 rounded-lg">
+                  <CheckCircle className="h-4 w-4" />
+                  Relation request sent!
+                </div>
+              ) : (
+                <div className="space-y-2 border border-border rounded-xl p-3">
+                  <p className="text-xs font-medium text-text-light">Request a relation</p>
+                  <Select
+                    id="sec_rel_type"
+                    label=""
+                    value={selectedRelType}
+                    onChange={(e) => setSelectedRelType(e.target.value as RelationshipType)}
+                    options={relOptions}
+                  />
+                  {relationError && (
+                    <p className="text-xs text-error">{relationError}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => { setShowAddRelation(false); setRelationError(null); }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      loading={relationLoading}
+                      onClick={async () => {
+                        setRelationLoading(true);
+                        setRelationError(null);
+                        const result = await requestSecondaryRelation(profile.id, selectedRelType);
+                        setRelationLoading(false);
+                        if (result.error) {
+                          setRelationError(result.error);
+                        } else {
+                          setRelationSuccess(true);
+                          setTimeout(() => router.refresh(), 1000);
+                        }
+                      }}
+                    >
+                      Send Request
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

@@ -50,6 +50,25 @@ export async function createInvitation(
       return { error: "You cannot invite yourself." };
     }
 
+    // Check if this person is already in the user's tree
+    const profileQuery = input.contactType === "email"
+      ? admin.from("profiles").select("id").eq("email", input.contactValue.trim()).single()
+      : admin.from("profiles").select("id").eq("phone", input.contactValue.trim()).single();
+    const { data: existingProfile } = await profileQuery;
+
+    if (existingProfile) {
+      // Check if they're already connected via relationships
+      const { data: existingRel } = await admin
+        .from("relationships")
+        .select("id")
+        .or(`and(person_id.eq.${user.id},related_person_id.eq.${existingProfile.id}),and(person_id.eq.${existingProfile.id},related_person_id.eq.${user.id})`)
+        .limit(1);
+
+      if (existingRel && existingRel.length > 0) {
+        return { error: "This person is already in your family tree." };
+      }
+    }
+
     // Build insert data
     const insertData: Record<string, unknown> = {
       inviter_id: user.id,

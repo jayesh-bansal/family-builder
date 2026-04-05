@@ -11,9 +11,10 @@ import type { Profile } from "@/lib/types";
 
 interface NavbarProps {
   user: Profile | null;
+  unreadCount?: number;
 }
 
-export default function Navbar({ user }: NavbarProps) {
+export default function Navbar({ user, unreadCount = 0 }: NavbarProps) {
   const t = useTranslations();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -63,6 +64,11 @@ export default function Navbar({ user }: NavbarProps) {
                 className="text-text-light hover:text-accent transition-colors relative"
               >
                 <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-error text-white text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full px-1">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
               </Link>
               <Link href="/profile" className="flex items-center gap-2">
                 <Avatar

@@ -25,6 +25,13 @@ export default function PushNotificationManager({
     // Delay registration to avoid blocking app startup
     const timer = setTimeout(async () => {
       try {
+        // Skip if a previous attempt already crashed / failed
+        const PUSH_FAILED_KEY = "kutumb_push_failed";
+        if (typeof localStorage !== "undefined" && localStorage.getItem(PUSH_FAILED_KEY)) {
+          console.debug("Push registration skipped — previous attempt failed");
+          return;
+        }
+
         const { PushNotifications } = await import(
           "@capacitor/push-notifications"
         );
@@ -38,18 +45,28 @@ export default function PushNotificationManager({
           return;
         }
 
-        // Request permission
-        const permResult = await PushNotifications.requestPermissions();
-        if (permResult.receive !== "granted") return;
+        // If already granted, only register listeners (no register() call without Firebase)
+        // If not granted, request permission first
+        let permStatus = checkResult.receive;
+        if (permStatus !== "granted") {
+          const permResult = await PushNotifications.requestPermissions();
+          permStatus = permResult.receive;
+        }
+        if (permStatus !== "granted") return;
 
         // Listen for registration errors BEFORE calling register()
         PushNotifications.addListener("registrationError", (error) => {
           console.debug("Push registration failed (Firebase not configured?):", error);
+          // Mark as failed so we don't crash on subsequent loads
+          try { localStorage.setItem(PUSH_FAILED_KEY, "1"); } catch {}
         });
 
         // Listen for token
         PushNotifications.addListener("registration", async (token) => {
           try {
+            // Clear failure flag on successful registration
+            try { localStorage.removeItem(PUSH_FAILED_KEY); } catch {}
+
             const supabase = createClient();
             const platform = getPlatform();
 
@@ -85,10 +102,15 @@ export default function PushNotificationManager({
           }
         );
 
-        // Register with APNS / FCM — this is what can crash without google-services.json
-        await PushNotifications.register().catch((err) => {
-          console.debug("Push register() failed:", err);
-        });
+        // Mark as attempting before calling register() — if the app crashes
+        // here, the flag persists and we skip next time
+        try { localStorage.setItem(PUSH_FAILED_KEY, "1"); } catch {}
+
+        // Register with APNS / FCM
+        await PushNotifications.register();
+
+        // If we get here, register() didn't crash — clear the flag
+        // (success is handled in the "registration" listener)
       } catch (err) {
         // Plugin not available or other error — silently ignore
         console.debug("Push notifications not available:", err);

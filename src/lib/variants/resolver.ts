@@ -52,6 +52,43 @@ export function getRelationshipLabel(
   return relType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/**
+ * Get variant-aware relationship dropdown options.
+ * For Indian variant, labels like "Parent" become "Parent (Papa/Mummy)".
+ */
+export function getRelationshipOptions(
+  variant: FamilyVariant
+): { value: string; label: string }[] {
+  const config = getVariantConfig(variant);
+  const types = [
+    "parent", "child", "spouse", "sibling",
+    "grandparent", "grandchild",
+    "step_parent", "step_child",
+    "adopted_parent", "adopted_child",
+    "half_sibling", "godparent", "godchild", "close_friend",
+  ];
+
+  return types.map((type) => {
+    // Get the "other" gender label for the primary label
+    const globalLabel = GLOBAL_VARIANT.hopLabels[`${type}:o`] ||
+      type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+    if (variant === "global") return { value: type, label: globalLabel };
+
+    // For non-global variants, show both: "Parent (Papa/Mummy)"
+    const maleLabel = config.hopLabels[`${type}:m`];
+    const femaleLabel = config.hopLabels[`${type}:f`];
+    if (maleLabel && femaleLabel && maleLabel !== femaleLabel) {
+      return { value: type, label: `${globalLabel} (${maleLabel}/${femaleLabel})` };
+    }
+    const anyLabel = maleLabel || femaleLabel || config.hopLabels[`${type}:o`];
+    if (anyLabel && anyLabel !== globalLabel) {
+      return { value: type, label: `${globalLabel} (${anyLabel})` };
+    }
+    return { value: type, label: globalLabel };
+  });
+}
+
 /** Normalize a gender value to our Gender type */
 function normalizeGender(gender: string | null | undefined): Gender {
   if (gender === "male" || gender === "female") return gender;

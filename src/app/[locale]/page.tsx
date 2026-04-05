@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import AppShell from "@/components/layout/AppShell";
 import LandingPage from "@/components/pages/LandingPage";
 import DashboardContent from "@/components/pages/DashboardContent";
+import { getUnreadCount } from "@/lib/supabase/getUnreadCount";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -64,9 +65,10 @@ export default async function Home() {
   const familyMembers = familyResult.data || [profile];
   const relationshipCount = Math.floor((relationshipResult.count ?? 0) / 2);
   const treeMemberCount = familyMembers.length;
+  const unreadCount = await getUnreadCount(userId);
 
   return (
-    <AppShell user={profile}>
+    <AppShell user={profile} unreadCount={unreadCount}>
       <DashboardContent
         profile={profile}
         memberCount={treeMemberCount}

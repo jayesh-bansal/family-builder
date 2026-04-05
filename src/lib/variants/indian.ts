@@ -182,6 +182,30 @@ export const INDIAN_VARIANT: VariantConfig = {
     "child:m,spouse:f": "Bahu",            // Son's wife
     "child:f,spouse:m": "Damad",           // Daughter's husband
 
+    // ─── Spouse's sibling's spouse (co-in-laws) ───
+    "spouse:f,sibling:m,spouse:f": "Saalhaj",      // Wife's brother's wife
+    "spouse:f,sibling:f,spouse:m": "Sadhu",         // Wife's sister's husband (co-brother-in-law)
+    "spouse:m,sibling:m,spouse:f": "Devrani/Jethani", // Husband's brother's wife
+    "spouse:m,sibling:f,spouse:m": "Nanadoi",       // Husband's sister's husband
+
+    // ─── Spouse's parents' siblings ───
+    "spouse:m,parent:m,sibling:m": "Sasural Chacha", // Husband's father's brother
+    "spouse:m,parent:f,sibling:f": "Sasural Mausi",  // Husband's mother's sister
+    "spouse:f,parent:m,sibling:m": "Sasural Chacha", // Wife's father's brother
+    "spouse:f,parent:f,sibling:f": "Sasural Mausi",  // Wife's mother's sister
+
+    // ─── Great-grandchildren ───
+    "child:m,child:m,child:m": "Par Pota",
+    "child:m,child:m,child:f": "Par Poti",
+    "child:f,child:f,child:m": "Par Nawasa",
+    "child:f,child:f,child:f": "Par Nawasi",
+
+    // ─── Sibling's spouse's sibling ───
+    "sibling:m,spouse:f,sibling:m": "Sadhu Bhai",    // Brother's wife's brother
+    "sibling:m,spouse:f,sibling:f": "Sadhu Behen",   // Brother's wife's sister
+    "sibling:f,spouse:m,sibling:m": "Jija ka Bhai",  // Sister's husband's brother
+    "sibling:f,spouse:m,sibling:f": "Jija ki Behen", // Sister's husband's sister
+
     // ─── Parent's spouse (for step situations) ───
     "parent:m,spouse:f": "Mummy",
     "parent:f,spouse:m": "Papa",

@@ -77,7 +77,8 @@ function isActionableInvite(notification: Notification): boolean {
     !!notification.data &&
     "token" in notification.data &&
     "invitation_id" in notification.data &&
-    !("declined_by" in notification.data)
+    !("declined_by" in notification.data) &&
+    !("handled" in notification.data)
   );
 }
 
@@ -131,10 +132,15 @@ export default function NotificationsContent({
 
     if (result.success) {
       setActionStates((prev) => ({ ...prev, [notification.id]: "accepted" }));
-      // Mark notification as read
-      if (!notification.is_read) {
-        await markAsRead(notification.id);
-      }
+      // Mark as read and update data to remove actionable state
+      const supabase = createClient();
+      await supabase
+        .from("notifications")
+        .update({
+          is_read: true,
+          data: { ...notification.data, handled: "accepted" },
+        })
+        .eq("id", notification.id);
       // Refresh after a short delay to show the success state
       setTimeout(() => router.refresh(), 1500);
     } else {
@@ -162,9 +168,15 @@ export default function NotificationsContent({
 
     if (result.success) {
       setActionStates((prev) => ({ ...prev, [notification.id]: "declined" }));
-      if (!notification.is_read) {
-        await markAsRead(notification.id);
-      }
+      // Mark as read and update data to remove actionable state
+      const supabase = createClient();
+      await supabase
+        .from("notifications")
+        .update({
+          is_read: true,
+          data: { ...notification.data, handled: "declined" },
+        })
+        .eq("id", notification.id);
       setTimeout(() => router.refresh(), 1500);
     } else {
       setActionStates((prev) => ({ ...prev, [notification.id]: "error" }));

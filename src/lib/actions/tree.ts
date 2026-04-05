@@ -383,3 +383,88 @@ export async function uploadMemberAvatar(
     return { error: "Unexpected error occurred." };
   }
 }
+
+/**
+ * Server action: Request a secondary relationship with an existing member.
+ * Creates an unconfirmed relationship and sends a notification to the target.
+ */
+export async function requestSecondaryRelation(
+  targetMemberId: string,
+  relationshipType: RelationshipType
+): Promise<ActionResult> {
+  try {
+    const supabase = await createClient();
+    const admin = createAdminClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated." };
+    if (targetMemberId === user.id) return { error: "Cannot add a relation with yourself." };
+
+    // Check target exists and is not a placeholder
+    const { data: target } = await admin
+      .from("profiles")
+      .select("id, full_name, is_placeholder")
+      .eq("id", targetMemberId)
+      .single();
+    if (!target) return { error: "Member not found." };
+    if (target.is_placeholder) return { error: "Cannot request relation with a placeholder member." };
+
+    // Check for duplicate
+    const { data: existingRel } = await admin
+      .from("relationships")
+      .select("id")
+      .eq("person_id", user.id)
+      .eq("related_person_id", targetMemberId)
+      .eq("relationship_type", INVERSE_RELATIONSHIP[relationshipType])
+      .single();
+    if (existingRel) return { error: "This relationship already exists." };
+
+    // Create unconfirmed bidirectional relationship
+    const { error: relError } = await admin.from("relationships").insert([
+      {
+        person_id: user.id,
+        related_person_id: targetMemberId,
+        relationship_type: INVERSE_RELATIONSHIP[relationshipType],
+        is_confirmed: false,
+        is_primary: false,
+        created_by: user.id,
+      },
+      {
+        person_id: targetMemberId,
+        related_person_id: user.id,
+        relationship_type: relationshipType,
+        is_confirmed: false,
+        is_primary: false,
+        created_by: user.id,
+      },
+    ]);
+    if (relError) return { error: "Failed to create relationship request." };
+
+    // Get requester's name for notification
+    const { data: requester } = await admin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+
+    // Notify the target member
+    await admin.from("notifications").insert({
+      user_id: targetMemberId,
+      type: "info_updated",
+      title: "New Relationship Request",
+      message: `${requester?.full_name || "Someone"} wants to add you as their ${relationshipType.replace(/_/g, " ")}.`,
+      data: {
+        requester_id: user.id,
+        relationship_type: relationshipType,
+        action: "relation_request",
+      },
+    });
+
+    return { success: true };
+  } catch (err) {
+    console.error("requestSecondaryRelation error:", err);
+    return { error: "Unexpected error occurred." };
+  }
+}

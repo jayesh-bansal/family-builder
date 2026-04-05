@@ -1,12 +1,14 @@
 import { getProfile } from "@/lib/supabase/getProfile";
+import { getUnreadCount } from "@/lib/supabase/getUnreadCount";
 import AppShell from "@/components/layout/AppShell";
 import ProfileForm from "@/components/pages/ProfileForm";
 
 export default async function ProfilePage() {
   const profile = await getProfile();
+  const unreadCount = await getUnreadCount(profile.id);
 
   return (
-    <AppShell user={profile}>
+    <AppShell user={profile} unreadCount={unreadCount}>
       <div className="max-w-2xl mx-auto px-4 py-8">
         <ProfileForm profile={profile} />
       </div>

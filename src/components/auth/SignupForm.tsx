@@ -52,9 +52,11 @@ export default function SignupForm() {
       family_variant: familyVariant,
     };
 
+    const emailRedirectTo = `${window.location.origin}/${locale}/auth/callback`;
+
     const credentials =
       method === "email"
-        ? { email, password, options: { data: meta } }
+        ? { email, password, options: { data: meta, emailRedirectTo } }
         : { phone: phone.trim(), password, options: { data: meta } };
 
     const { data: signUpData, error: authError } =

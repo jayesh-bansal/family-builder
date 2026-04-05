@@ -164,6 +164,22 @@ export const GLOBAL_VARIANT: VariantConfig = {
     "child:m,spouse:f": "Daughter-in-Law",
     "child:f,spouse:m": "Son-in-Law",
 
+    // Spouse's sibling's spouse (co-in-laws)
+    "spouse:f,sibling:m,spouse:f": "Co-Sister-in-Law",  // Wife's brother's wife
+    "spouse:f,sibling:f,spouse:m": "Co-Brother-in-Law", // Wife's sister's husband
+    "spouse:m,sibling:m,spouse:f": "Co-Sister-in-Law",  // Husband's brother's wife
+    "spouse:m,sibling:f,spouse:m": "Co-Brother-in-Law", // Husband's sister's husband
+
+    // Great-grandchildren
+    "child:m,child:m,child:m": "Great Grandson",
+    "child:m,child:m,child:f": "Great Granddaughter",
+    "child:m,child:f,child:m": "Great Grandson",
+    "child:m,child:f,child:f": "Great Granddaughter",
+    "child:f,child:m,child:m": "Great Grandson",
+    "child:f,child:m,child:f": "Great Granddaughter",
+    "child:f,child:f,child:m": "Great Grandson",
+    "child:f,child:f,child:f": "Great Granddaughter",
+
     // Parent's spouse (non-biological)
     "parent:m,spouse:f": "Mother",
     "parent:f,spouse:m": "Father",

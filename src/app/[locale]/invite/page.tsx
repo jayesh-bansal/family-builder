@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/supabase/getProfile";
+import { getUnreadCount } from "@/lib/supabase/getUnreadCount";
 import AppShell from "@/components/layout/AppShell";
 import InvitePageContent from "@/components/pages/InvitePageContent";
 
@@ -15,8 +16,10 @@ export default async function InvitePage() {
     .eq("inviter_id", profile.id)
     .order("created_at", { ascending: false });
 
+  const unreadCount = await getUnreadCount(profile.id);
+
   return (
-    <AppShell user={profile}>
+    <AppShell user={profile} unreadCount={unreadCount}>
       <div className="max-w-2xl mx-auto px-4 py-8">
         <InvitePageContent
           currentUser={profile}

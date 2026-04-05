@@ -8,10 +8,13 @@ export async function GET(
   const { locale } = await params;
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type");
 
+  const supabase = await createClient();
+
   if (code) {
-    const supabase = await createClient();
+    // OAuth or PKCE flow — exchange code for session
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
       console.error("Auth callback error:", error.message);
@@ -19,11 +22,20 @@ export async function GET(
         `${origin}/${locale}/login?error=${encodeURIComponent(error.message)}`
       );
     }
-  } else if (type === "signup" || type === "email") {
-    // Email verification redirect — code already exchanged by Supabase
-    return NextResponse.redirect(`${origin}/${locale}/dashboard`);
+  } else if (token_hash && type) {
+    // Email verification via token hash (magic link / email confirm)
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash,
+      type: type as "signup" | "email" | "recovery",
+    });
+    if (error) {
+      console.error("OTP verify error:", error.message);
+      return NextResponse.redirect(
+        `${origin}/${locale}/login?error=${encodeURIComponent(error.message)}`
+      );
+    }
   } else {
-    // No code provided — redirect to login
+    // No code or token — redirect to login
     return NextResponse.redirect(`${origin}/${locale}/login`);
   }
 

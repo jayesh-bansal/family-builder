@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import DashboardContent from "@/components/pages/DashboardContent";
+import { getUnreadCount } from "@/lib/supabase/getUnreadCount";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -59,9 +60,10 @@ export default async function DashboardPage() {
   // Each relationship is stored bidirectionally (2 rows per pair)
   const relationshipCount = Math.floor((relationshipResult.count ?? 0) / 2);
   const treeMemberCount = familyMembers.length;
+  const unreadCount = await getUnreadCount(userId);
 
   return (
-    <AppShell user={profile}>
+    <AppShell user={profile} unreadCount={unreadCount}>
       <DashboardContent
         profile={profile}
         memberCount={treeMemberCount}

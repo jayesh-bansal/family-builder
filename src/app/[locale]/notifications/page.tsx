@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/supabase/getProfile";
+import { getUnreadCount } from "@/lib/supabase/getUnreadCount";
 import AppShell from "@/components/layout/AppShell";
 import NotificationsContent from "@/components/pages/NotificationsContent";
 
@@ -13,8 +14,10 @@ export default async function NotificationsPage() {
     .eq("user_id", profile.id)
     .order("created_at", { ascending: false });
 
+  const unreadCount = await getUnreadCount(profile.id);
+
   return (
-    <AppShell user={profile}>
+    <AppShell user={profile} unreadCount={unreadCount}>
       <div className="max-w-2xl mx-auto px-4 py-8">
         <NotificationsContent notifications={notifications || []} />
       </div>

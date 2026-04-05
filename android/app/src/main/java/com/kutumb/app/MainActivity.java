@@ -1,4 +1,4 @@
-package com.familybuilder.app;
+package com.kutumb.app;
 
 import com.getcapacitor.BridgeActivity;
 

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getProfile } from "@/lib/supabase/getProfile";
+import { getUnreadCount } from "@/lib/supabase/getUnreadCount";
 import AppShell from "@/components/layout/AppShell";
 import FamilyTreeView from "@/components/tree/FamilyTreeView";
 import SetupBanner from "@/components/tree/SetupBanner";
@@ -109,8 +110,10 @@ export default async function TreePage() {
     }
   }
 
+  const unreadCount = await getUnreadCount(profile.id);
+
   return (
-    <AppShell user={profile}>
+    <AppShell user={profile} unreadCount={unreadCount}>
       {migrationNeeded && <SetupBanner />}
       <FamilyTreeView
         currentUser={profile}

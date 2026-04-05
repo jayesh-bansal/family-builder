@@ -14,6 +14,7 @@ import {
   hasContradiction,
   computeAutoLinks,
 } from "@/lib/relationships";
+import { getRelationshipOptions, type FamilyVariant } from "@/lib/variants";
 
 interface AddMemberModalProps {
   currentUser: Profile;
@@ -21,23 +22,6 @@ interface AddMemberModalProps {
   relationships: Relationship[];
   onClose: () => void;
 }
-
-const relationshipOptions: { value: RelationshipType; label: string }[] = [
-  { value: "parent", label: "Parent" },
-  { value: "child", label: "Child" },
-  { value: "spouse", label: "Spouse" },
-  { value: "sibling", label: "Sibling" },
-  { value: "grandparent", label: "Grandparent" },
-  { value: "grandchild", label: "Grandchild" },
-  { value: "step_parent", label: "Step Parent" },
-  { value: "step_child", label: "Step Child" },
-  { value: "adopted_parent", label: "Adoptive Parent" },
-  { value: "adopted_child", label: "Adopted Child" },
-  { value: "half_sibling", label: "Half Sibling" },
-  { value: "godparent", label: "Godparent" },
-  { value: "godchild", label: "Godchild" },
-  { value: "close_friend", label: "Close Friend" },
-];
 
 export default function AddMemberModal({
   currentUser,
@@ -47,6 +31,8 @@ export default function AddMemberModal({
 }: AddMemberModalProps) {
   const t = useTranslations("tree");
   const router = useRouter();
+  const variant: FamilyVariant = (currentUser.family_variant as FamilyVariant) || "global";
+  const relationshipOptions = getRelationshipOptions(variant);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPlaceholder, setIsPlaceholder] = useState(true);

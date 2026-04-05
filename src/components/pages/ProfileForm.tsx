@@ -4,15 +4,18 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
+  Camera,
   ChevronDown,
   ChevronUp,
   Globe,
+  Loader2,
   Mail,
   Phone,
   Shield,
   Check,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { uploadMemberAvatar } from "@/lib/actions/tree";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
@@ -97,6 +100,8 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
   const [socials, setSocials] = useState<SocialLinks>(
     profile.social_links || {}
   );
+  const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url);
+  const [avatarLoading, setAvatarLoading] = useState(false);
 
   // Auth identity state
   const [authEmail, setAuthEmail] = useState<string | null>(null);
@@ -121,6 +126,33 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
     };
     fetchIdentities();
   }, []);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image too large (max 5MB).");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      setError("File must be an image.");
+      return;
+    }
+    setAvatarLoading(true);
+    setError(null);
+    const formData = new FormData();
+    formData.append("avatar", file);
+    const result = await uploadMemberAvatar(profile.id, formData);
+    setAvatarLoading(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    if (result.url) {
+      setAvatarUrl(result.url);
+      router.refresh();
+    }
+  };
 
   const updateField = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -240,12 +272,29 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
   return (
     <Card>
       <div className="flex items-center gap-4 mb-6 min-w-0">
-        <Avatar src={profile.avatar_url} name={profile.full_name} size="xl" />
+        <label className="relative cursor-pointer group shrink-0">
+          <Avatar src={avatarUrl} name={profile.full_name} size="xl" />
+          <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            {avatarLoading ? (
+              <Loader2 className="h-5 w-5 text-white animate-spin" />
+            ) : (
+              <Camera className="h-5 w-5 text-white" />
+            )}
+          </div>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleAvatarUpload}
+            className="sr-only"
+            disabled={avatarLoading}
+          />
+        </label>
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold text-primary">
             {t("editProfile")}
           </h1>
           <p className="text-text-light truncate">{authEmail || authPhone || ""}</p>
+          <p className="text-xs text-text-light/60 mt-0.5">Tap photo to change</p>
         </div>
       </div>
 
