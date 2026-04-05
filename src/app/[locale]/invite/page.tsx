@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/supabase/getProfile";
 import { getUnreadCount } from "@/lib/supabase/getUnreadCount";

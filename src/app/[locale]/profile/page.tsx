@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { getProfile } from "@/lib/supabase/getProfile";
 import { getUnreadCount } from "@/lib/supabase/getUnreadCount";
 import AppShell from "@/components/layout/AppShell";

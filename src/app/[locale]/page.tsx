@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { createClient } from "@/lib/supabase/server";
 import AppShell from "@/components/layout/AppShell";
 import LandingPage from "@/components/pages/LandingPage";
