@@ -77,7 +77,10 @@ export default async function TreePage() {
       personIds.add(r.related_person_id);
     });
 
-    const { data: treeMembers } = await supabase
+    // Use admin client to bypass RLS — placeholders created by other
+    // relatives are invisible to the regular client's RLS policies.
+    const admin = createAdminClient();
+    const { data: treeMembers } = await admin
       .from("profiles")
       .select("*")
       .in("id", Array.from(personIds));
