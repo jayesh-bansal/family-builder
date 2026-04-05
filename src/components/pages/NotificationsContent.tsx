@@ -20,6 +20,10 @@ import {
   acceptInvitation,
   declineInvitation,
 } from "@/lib/actions/invitation";
+import {
+  acceptRelationRequest,
+  declineRelationRequest,
+} from "@/lib/actions/tree";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import type { Notification } from "@/lib/types";
@@ -33,6 +37,7 @@ const typeIcons: Record<string, React.ReactNode> = {
   tree_linked: <Link2 className="h-5 w-5 text-accent" />,
   member_joined: <UserPlus className="h-5 w-5 text-success" />,
   info_updated: <Info className="h-5 w-5 text-primary" />,
+  relation_request: <UserPlus className="h-5 w-5 text-accent" />,
   declined: <ThumbsDown className="h-5 w-5 text-error" />,
 };
 
@@ -78,6 +83,18 @@ function isActionableInvite(notification: Notification): boolean {
     "token" in notification.data &&
     "invitation_id" in notification.data &&
     !("declined_by" in notification.data) &&
+    !("handled" in notification.data)
+  );
+}
+
+/**
+ * Check if a notification is an actionable relation request.
+ */
+function isActionableRelationRequest(notification: Notification): boolean {
+  return (
+    notification.type === "relation_request" &&
+    !!notification.data &&
+    "requester_id" in notification.data &&
     !("handled" in notification.data)
   );
 }
@@ -188,9 +205,67 @@ export default function NotificationsContent({
     }
   };
 
+  const handleAcceptRelation = async (notification: Notification) => {
+    const requesterId = notification.data?.requester_id as string;
+    if (!requesterId) return;
+    if (actionStates[notification.id] === "loading") return;
+
+    setActionStates((prev) => ({ ...prev, [notification.id]: "loading" }));
+
+    const result = await acceptRelationRequest(requesterId);
+
+    if (result.success) {
+      setActionStates((prev) => ({ ...prev, [notification.id]: "accepted" }));
+      const supabase = createClient();
+      await supabase
+        .from("notifications")
+        .update({
+          is_read: true,
+          data: { ...notification.data, handled: "accepted" },
+        })
+        .eq("id", notification.id);
+      setTimeout(() => router.refresh(), 1500);
+    } else {
+      setActionStates((prev) => ({ ...prev, [notification.id]: "error" }));
+      setTimeout(
+        () => setActionStates((prev) => ({ ...prev, [notification.id]: null })),
+        3000
+      );
+    }
+  };
+
+  const handleDeclineRelation = async (notification: Notification) => {
+    const requesterId = notification.data?.requester_id as string;
+    if (!requesterId) return;
+    if (actionStates[notification.id] === "loading") return;
+
+    setActionStates((prev) => ({ ...prev, [notification.id]: "loading" }));
+
+    const result = await declineRelationRequest(requesterId);
+
+    if (result.success) {
+      setActionStates((prev) => ({ ...prev, [notification.id]: "declined" }));
+      const supabase = createClient();
+      await supabase
+        .from("notifications")
+        .update({
+          is_read: true,
+          data: { ...notification.data, handled: "declined" },
+        })
+        .eq("id", notification.id);
+      setTimeout(() => router.refresh(), 1500);
+    } else {
+      setActionStates((prev) => ({ ...prev, [notification.id]: "error" }));
+      setTimeout(
+        () => setActionStates((prev) => ({ ...prev, [notification.id]: null })),
+        3000
+      );
+    }
+  };
+
   const handleNotificationClick = (notification: Notification) => {
-    // Don't navigate for actionable invites (buttons handle the action)
-    if (isActionableInvite(notification)) {
+    // Don't navigate for actionable notifications (buttons handle the action)
+    if (isActionableInvite(notification) || isActionableRelationRequest(notification)) {
       if (!notification.is_read) {
         markAsRead(notification.id);
       }
@@ -241,7 +316,8 @@ export default function NotificationsContent({
       ) : (
         <div className="space-y-2">
           {notifications.map((notification) => {
-            const actionable = isActionableInvite(notification);
+            const actionable = isActionableInvite(notification) || isActionableRelationRequest(notification);
+            const isRelRequest = isActionableRelationRequest(notification);
             const actionState = actionStates[notification.id];
 
             return (
@@ -276,7 +352,7 @@ export default function NotificationsContent({
                   )}
                 </div>
 
-                {/* Inline accept/decline buttons for invitation notifications */}
+                {/* Inline accept/decline buttons for actionable notifications */}
                 {actionable && (
                   <div className="mt-3 ml-8">
                     {actionState === "loading" ? (
@@ -287,12 +363,12 @@ export default function NotificationsContent({
                     ) : actionState === "accepted" ? (
                       <div className="flex items-center gap-2 text-sm text-success">
                         <CheckCircle className="h-4 w-4" />
-                        Invitation accepted! Trees connected.
+                        {isRelRequest ? "Relation accepted!" : "Invitation accepted! Trees connected."}
                       </div>
                     ) : actionState === "declined" ? (
                       <div className="flex items-center gap-2 text-sm text-text-light">
                         <XCircle className="h-4 w-4" />
-                        Invitation declined.
+                        {isRelRequest ? "Relation declined." : "Invitation declined."}
                       </div>
                     ) : actionState === "error" ? (
                       <div className="flex items-center gap-2 text-sm text-error">
@@ -304,7 +380,9 @@ export default function NotificationsContent({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleAcceptInvite(notification);
+                            isRelRequest
+                              ? handleAcceptRelation(notification)
+                              : handleAcceptInvite(notification);
                           }}
                           disabled={actionState === "loading"}
                           className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
@@ -315,7 +393,9 @@ export default function NotificationsContent({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeclineInvite(notification);
+                            isRelRequest
+                              ? handleDeclineRelation(notification)
+                              : handleDeclineInvite(notification);
                           }}
                           disabled={actionState === "loading"}
                           className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-background border border-border text-text-light text-sm font-medium hover:bg-surface transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"

@@ -593,6 +593,7 @@ function FamilyTreeViewInner({
           profile={memberMap.get(selectedMemberId)!}
           relationships={relationships}
           members={members}
+          currentUserId={currentUser.id}
           isCurrentUser={selectedMemberId === currentUser.id}
           familyVariant={variant}
           onClose={() => setSelectedMemberId(null)}

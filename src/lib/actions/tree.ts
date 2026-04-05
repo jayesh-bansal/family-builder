@@ -251,6 +251,9 @@ export async function editFamilyMember(
     if (!member.is_placeholder) {
       return { error: "Can only edit placeholder members." };
     }
+    if (member.created_by !== user.id) {
+      return { error: "Only the creator can edit this member." };
+    }
 
     const { error: updateError } = await admin
       .from("profiles")
@@ -302,6 +305,9 @@ export async function deleteFamilyMember(
     if (!member) return { error: "Member not found." };
     if (!member.is_placeholder) {
       return { error: "Can only delete placeholder members." };
+    }
+    if (member.created_by !== user.id) {
+      return { error: "Only the creator can delete this member." };
     }
 
     // Delete all relationships involving this member
@@ -449,10 +455,10 @@ export async function requestSecondaryRelation(
       .eq("id", user.id)
       .single();
 
-    // Notify the target member
+    // Notify the target member with actionable notification
     await admin.from("notifications").insert({
       user_id: targetMemberId,
-      type: "info_updated",
+      type: "relation_request",
       title: "New Relationship Request",
       message: `${requester?.full_name || "Someone"} wants to add you as their ${relationshipType.replace(/_/g, " ")}.`,
       data: {
@@ -465,6 +471,158 @@ export async function requestSecondaryRelation(
     return { success: true };
   } catch (err) {
     console.error("requestSecondaryRelation error:", err);
+    return { error: "Unexpected error occurred." };
+  }
+}
+
+/**
+ * Server action: Set a display alias for a member in your tree.
+ * Only affects your own view — stored on your relationship row.
+ */
+export async function setMemberAlias(
+  memberId: string,
+  alias: string
+): Promise<ActionResult> {
+  try {
+    const supabase = await createClient();
+    const admin = createAdminClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated." };
+
+    // Update alias on the relationship where current user is person_id
+    const { error } = await admin
+      .from("relationships")
+      .update({ display_alias: alias.trim() || null })
+      .eq("person_id", user.id)
+      .eq("related_person_id", memberId);
+
+    if (error) return { error: "Failed to update alias." };
+
+    return { success: true };
+  } catch (err) {
+    console.error("setMemberAlias error:", err);
+    return { error: "Unexpected error occurred." };
+  }
+}
+
+/**
+ * Server action: Accept a secondary relation request.
+ * Confirms the unconfirmed bidirectional relationships.
+ */
+export async function acceptRelationRequest(
+  requesterId: string
+): Promise<ActionResult> {
+  try {
+    const supabase = await createClient();
+    const admin = createAdminClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated." };
+
+    // Find the unconfirmed relationships between these two users
+    const { data: rels } = await admin
+      .from("relationships")
+      .select("id")
+      .or(
+        `and(person_id.eq.${requesterId},related_person_id.eq.${user.id}),` +
+        `and(person_id.eq.${user.id},related_person_id.eq.${requesterId})`
+      )
+      .eq("is_confirmed", false);
+
+    if (!rels || rels.length === 0) {
+      return { error: "No pending relation request found." };
+    }
+
+    // Confirm all unconfirmed relationships between this pair
+    const { error: updateError } = await admin
+      .from("relationships")
+      .update({ is_confirmed: true })
+      .in("id", rels.map((r) => r.id));
+
+    if (updateError) return { error: "Failed to accept relation request." };
+
+    // Notify the requester
+    const { data: accepter } = await admin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+
+    await admin.from("notifications").insert({
+      user_id: requesterId,
+      type: "info_updated",
+      title: "Relation Request Accepted",
+      message: `${accepter?.full_name || "Someone"} accepted your relation request.`,
+      data: { accepted_by: user.id },
+    });
+
+    return { success: true };
+  } catch (err) {
+    console.error("acceptRelationRequest error:", err);
+    return { error: "Unexpected error occurred." };
+  }
+}
+
+/**
+ * Server action: Decline a secondary relation request.
+ * Deletes the unconfirmed bidirectional relationships.
+ */
+export async function declineRelationRequest(
+  requesterId: string
+): Promise<ActionResult> {
+  try {
+    const supabase = await createClient();
+    const admin = createAdminClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated." };
+
+    // Find and delete the unconfirmed relationships
+    const { data: rels } = await admin
+      .from("relationships")
+      .select("id")
+      .or(
+        `and(person_id.eq.${requesterId},related_person_id.eq.${user.id}),` +
+        `and(person_id.eq.${user.id},related_person_id.eq.${requesterId})`
+      )
+      .eq("is_confirmed", false);
+
+    if (!rels || rels.length === 0) {
+      return { error: "No pending relation request found." };
+    }
+
+    const { error: deleteError } = await admin
+      .from("relationships")
+      .delete()
+      .in("id", rels.map((r) => r.id));
+
+    if (deleteError) return { error: "Failed to decline relation request." };
+
+    // Notify the requester
+    const { data: decliner } = await admin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+
+    await admin.from("notifications").insert({
+      user_id: requesterId,
+      type: "info_updated",
+      title: "Relation Request Declined",
+      message: `${decliner?.full_name || "Someone"} declined your relation request.`,
+      data: { declined_by: user.id },
+    });
+
+    return { success: true };
+  } catch (err) {
+    console.error("declineRelationRequest error:", err);
     return { error: "Unexpected error occurred." };
   }
 }

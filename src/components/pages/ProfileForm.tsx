@@ -258,7 +258,6 @@ export default function ProfileForm({ profile }: ProfileFormProps) {
   };
 
   const visibilityOptions = [
-    { value: "public", label: t("visibilityOptions.public") },
     { value: "family_only", label: t("visibilityOptions.family_only") },
     { value: "private", label: t("visibilityOptions.private") },
   ];

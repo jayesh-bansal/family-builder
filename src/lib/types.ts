@@ -14,7 +14,7 @@ export type RelationshipType =
   | "godchild"
   | "close_friend";
 
-export type TreeVisibility = "public" | "family_only" | "private";
+export type TreeVisibility = "family_only" | "private";
 
 export type Gender = "male" | "female" | "other";
 
@@ -26,7 +26,8 @@ export type NotificationType =
   | "invite"
   | "tree_linked"
   | "member_joined"
-  | "info_updated";
+  | "info_updated"
+  | "relation_request";
 
 export interface SocialLinks {
   instagram?: string;
@@ -66,6 +67,7 @@ export interface Relationship {
   is_confirmed: boolean;
   is_primary: boolean;
   created_by: string;
+  display_alias: string | null;
   created_at: string;
 }
 

@@ -68,8 +68,8 @@ export default async function TreePage() {
   let migrationNeeded = false;
 
   if (!rpcError && treeData) {
-    // RPC works — get all profiles in the tree
-    relationships = treeData;
+    // RPC works — filter to only confirmed relationships for tree display
+    relationships = (treeData as any[]).filter((r: any) => r.is_confirmed !== false);
 
     const personIds = new Set<string>([profile.id]);
     treeData.forEach((r: any) => {
@@ -95,7 +95,8 @@ export default async function TreePage() {
       const { relationships: bfsRels, memberIds } = await getFullTreeBFS(
         profile.id
       );
-      relationships = bfsRels;
+      // Filter to only confirmed relationships for tree display
+      relationships = bfsRels.filter((r: any) => r.is_confirmed !== false);
 
       if (memberIds.length > 0) {
         const admin = createAdminClient();

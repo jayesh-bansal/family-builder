@@ -26,12 +26,13 @@ import Button from "@/components/ui/Button";
 import Select from "@/components/ui/Select";
 import type { Profile, Relationship, SocialLinks, RelationshipType } from "@/lib/types";
 import { getRelationshipLabel, getRelationshipOptions, type FamilyVariant } from "@/lib/variants";
-import { requestSecondaryRelation } from "@/lib/actions/tree";
+import { requestSecondaryRelation, setMemberAlias } from "@/lib/actions/tree";
 
 interface MemberProfileModalProps {
   profile: Profile;
   relationships: Relationship[];
   members: Profile[];
+  currentUserId: string;
   isCurrentUser: boolean;
   familyVariant?: FamilyVariant;
   onClose: () => void;
@@ -167,6 +168,7 @@ export default function MemberProfileModal({
   profile,
   relationships,
   members,
+  currentUserId,
   isCurrentUser,
   familyVariant = "global",
   onClose,
@@ -180,6 +182,14 @@ export default function MemberProfileModal({
   const [relationError, setRelationError] = useState<string | null>(null);
   const [selectedRelType, setSelectedRelType] = useState<RelationshipType>("sibling");
   const relOptions = getRelationshipOptions(familyVariant);
+
+  // Alias state — find current alias from the relationship where currentUser → this member
+  const myRelToThis = relationships.find(
+    (r) => r.person_id === currentUserId && r.related_person_id === profile.id
+  );
+  const [editingAlias, setEditingAlias] = useState(false);
+  const [aliasValue, setAliasValue] = useState((myRelToThis as any)?.display_alias || "");
+  const [aliasSaving, setAliasSaving] = useState(false);
 
   // Find this person's direct relationships
   const memberMap = new Map(members.map((m) => [m.id, m]));
@@ -248,6 +258,52 @@ export default function MemberProfileModal({
               <h3 className="text-xl font-bold text-primary">
                 {profile.full_name}
               </h3>
+              {/* Alias (personal nickname) — only for non-self members with a relationship */}
+              {!isCurrentUser && myRelToThis && (
+                <div className="mt-1">
+                  {editingAlias ? (
+                    <div className="flex items-center gap-1.5 justify-center">
+                      <input
+                        type="text"
+                        value={aliasValue}
+                        onChange={(e) => setAliasValue(e.target.value)}
+                        placeholder="Set a nickname..."
+                        className="text-xs px-2 py-1 rounded-lg border border-border bg-background text-text w-32 text-center outline-none focus:border-accent"
+                        autoFocus
+                      />
+                      <button
+                        disabled={aliasSaving}
+                        onClick={async () => {
+                          setAliasSaving(true);
+                          await setMemberAlias(profile.id, aliasValue);
+                          setAliasSaving(false);
+                          setEditingAlias(false);
+                          router.refresh();
+                        }}
+                        className="text-xs text-accent hover:text-accent-light cursor-pointer disabled:opacity-50"
+                      >
+                        {aliasSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                      </button>
+                      <button
+                        onClick={() => { setEditingAlias(false); setAliasValue((myRelToThis as any)?.display_alias || ""); }}
+                        className="text-xs text-text-light hover:text-text cursor-pointer"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setEditingAlias(true)}
+                      className="text-xs text-text-light hover:text-accent cursor-pointer transition-colors"
+                    >
+                      {(myRelToThis as any)?.display_alias
+                        ? <span>Alias: <span className="font-medium text-secondary">{(myRelToThis as any).display_alias}</span> <Pencil className="h-3 w-3 inline ml-0.5" /></span>
+                        : <span className="italic">Set a nickname <Pencil className="h-3 w-3 inline ml-0.5" /></span>
+                      }
+                    </button>
+                  )}
+                </div>
+              )}
               {profile.is_placeholder && (
                 <span className="inline-flex items-center gap-1 text-xs text-text-light bg-muted px-2 py-0.5 rounded-full mt-1">
                   <Ghost className="h-3 w-3" /> Placeholder
@@ -291,57 +347,63 @@ export default function MemberProfileModal({
             </div>
           )}
 
-          {/* Info fields */}
-          <div className="space-y-3">
-            {profile.gender && (
-              <div className="flex items-center gap-3 text-sm min-w-0">
-                <User className="h-4 w-4 text-accent shrink-0" />
-                <span className="text-text capitalize">{profile.gender}</span>
-              </div>
-            )}
+          {/* Info fields — hidden if member set visibility to private (unless it's yourself or a placeholder) */}
+          {(isCurrentUser || profile.is_placeholder || profile.tree_visibility !== "private") ? (
+            <div className="space-y-3">
+              {profile.gender && (
+                <div className="flex items-center gap-3 text-sm min-w-0">
+                  <User className="h-4 w-4 text-accent shrink-0" />
+                  <span className="text-text capitalize">{profile.gender}</span>
+                </div>
+              )}
 
-            {profile.email && (
-              <div className="flex items-center gap-3 text-sm min-w-0">
-                <Mail className="h-4 w-4 text-accent shrink-0" />
-                <span className="text-text truncate">{profile.email}</span>
-              </div>
-            )}
+              {profile.email && (
+                <div className="flex items-center gap-3 text-sm min-w-0">
+                  <Mail className="h-4 w-4 text-accent shrink-0" />
+                  <span className="text-text truncate">{profile.email}</span>
+                </div>
+              )}
 
-            {profile.phone && (
-              <div className="flex items-center gap-3 text-sm min-w-0">
-                <Phone className="h-4 w-4 text-accent shrink-0" />
-                <span className="text-text truncate">{profile.phone}</span>
-              </div>
-            )}
+              {profile.phone && (
+                <div className="flex items-center gap-3 text-sm min-w-0">
+                  <Phone className="h-4 w-4 text-accent shrink-0" />
+                  <span className="text-text truncate">{profile.phone}</span>
+                </div>
+              )}
 
-            {profile.location && (
-              <div className="flex items-center gap-3 text-sm min-w-0">
-                <MapPin className="h-4 w-4 text-accent shrink-0" />
-                <span className="text-text truncate">{profile.location}</span>
-              </div>
-            )}
+              {profile.location && (
+                <div className="flex items-center gap-3 text-sm min-w-0">
+                  <MapPin className="h-4 w-4 text-accent shrink-0" />
+                  <span className="text-text truncate">{profile.location}</span>
+                </div>
+              )}
 
-            {profile.birth_date && (
-              <div className="flex items-center gap-3 text-sm">
-                <Calendar className="h-4 w-4 text-accent shrink-0" />
-                <span className="text-text">
-                  {formatDate(profile.birth_date, true)}
-                </span>
-              </div>
-            )}
+              {profile.birth_date && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Calendar className="h-4 w-4 text-accent shrink-0" />
+                  <span className="text-text">
+                    {formatDate(profile.birth_date, true)}
+                  </span>
+                </div>
+              )}
 
-            {profile.death_date && (
-              <div className="flex items-center gap-3 text-sm">
-                <Calendar className="h-4 w-4 text-text-light shrink-0" />
-                <span className="text-text-light">
-                  Passed: {formatDate(profile.death_date, true)}
-                </span>
-              </div>
-            )}
-          </div>
+              {profile.death_date && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Calendar className="h-4 w-4 text-text-light shrink-0" />
+                  <span className="text-text-light">
+                    Passed: {formatDate(profile.death_date, true)}
+                  </span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-text-light italic text-center">
+              This member has set their profile to private.
+            </p>
+          )}
 
           {/* Birthday Calendar */}
-          {profile.birth_date && (
+          {profile.birth_date && (isCurrentUser || profile.is_placeholder || profile.tree_visibility !== "private") && (
             <BirthdayMiniCalendar birthDate={profile.birth_date} />
           )}
 
@@ -461,8 +523,8 @@ export default function MemberProfileModal({
             Member since {formatDate(profile.created_at)}
           </p>
 
-          {/* Edit button for placeholder members */}
-          {profile.is_placeholder && onEdit && (
+          {/* Edit button for placeholder members — only visible to creator */}
+          {profile.is_placeholder && onEdit && profile.created_by === currentUserId && (
             <Button
               onClick={() => {
                 onClose();
