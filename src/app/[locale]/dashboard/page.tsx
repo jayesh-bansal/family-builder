@@ -57,6 +57,11 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  // Redirect to setup if profile is incomplete (OAuth users)
+  if (!profile.gender || !profile.family_variant) {
+    redirect("/setup");
+  }
+
   // Family members for birthday calendar (fallback to just own profile)
   const familyMembers = familyResult.data || [profile];
   // Each relationship is stored bidirectionally (2 rows per pair)

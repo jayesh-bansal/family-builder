@@ -39,5 +39,22 @@ export async function GET(
     return NextResponse.redirect(`${origin}/${locale}/login`);
   }
 
+  // Check if profile needs setup (OAuth users may lack gender/variant)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("gender, family_variant")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.gender || !profile?.family_variant) {
+      return NextResponse.redirect(`${origin}/${locale}/setup`);
+    }
+  }
+
   return NextResponse.redirect(`${origin}/${locale}/dashboard`);
 }
