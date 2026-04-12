@@ -76,7 +76,8 @@ export interface Invitation {
   token: string;
   inviter_id: string;
   placeholder_id: string | null;
-  email: string;
+  email: string | null;
+  phone: string | null;
   relationship_type: RelationshipType;
   status: InvitationStatus;
   expires_at: string;

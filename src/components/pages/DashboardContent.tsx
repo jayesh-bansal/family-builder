@@ -9,6 +9,8 @@ import Button from "@/components/ui/Button";
 import Avatar from "@/components/ui/Avatar";
 import BirthdayCalendar from "@/components/ui/BirthdayCalendar";
 import type { Profile } from "@/lib/types";
+import { cacheDashboardData, cacheProfile } from "@/lib/offlineCache";
+import { useEffect } from "react";
 
 interface DashboardContentProps {
   profile: Profile;
@@ -26,6 +28,12 @@ export default function DashboardContent({
   familyMembers = [],
 }: DashboardContentProps) {
   const t = useTranslations("dashboard");
+
+  // Cache dashboard data and profile for offline access
+  useEffect(() => {
+    cacheProfile(profile);
+    cacheDashboardData({ memberCount, connectionCount, inviteCount, familyMembers });
+  }, [profile, memberCount, connectionCount, inviteCount, familyMembers]);
 
   const stats = [
     {

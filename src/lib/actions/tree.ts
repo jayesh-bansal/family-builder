@@ -350,6 +350,18 @@ export async function uploadMemberAvatar(
     } = await supabase.auth.getUser();
     if (!user) return { error: "Not authenticated." };
 
+    // For placeholder members, verify the uploader is the creator
+    if (memberId !== user.id) {
+      const { data: member } = await admin
+        .from("profiles")
+        .select("is_placeholder, created_by")
+        .eq("id", memberId)
+        .single();
+      if (member?.is_placeholder && member.created_by !== user.id) {
+        return { error: "Only the creator can update this member's avatar." };
+      }
+    }
+
     const file = formData.get("avatar") as File;
     if (!file) return { error: "No file provided." };
 

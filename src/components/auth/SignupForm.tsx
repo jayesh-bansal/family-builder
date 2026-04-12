@@ -70,10 +70,13 @@ export default function SignupForm() {
 
     // Also update the profile directly if user was created
     if (signUpData.user) {
-      await supabase
+      const { error: profileError } = await supabase
         .from("profiles")
         .update({ gender, family_variant: familyVariant })
         .eq("id", signUpData.user.id);
+      if (profileError) {
+        console.error("Profile update error:", profileError);
+      }
     }
 
     router.push("/dashboard");

@@ -3,6 +3,8 @@ import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import { notFound } from "next/navigation";
+import ServiceWorkerRegistration from "@/components/mobile/ServiceWorkerRegistration";
+import OfflineBanner from "@/components/layout/OfflineBanner";
 import "../globals.css";
 
 export const metadata: Metadata = {
@@ -47,6 +49,8 @@ export default async function LocaleLayout({
       </head>
       <body className="min-h-full flex flex-col bg-background text-text">
         <NextIntlClientProvider messages={messages}>
+          <ServiceWorkerRegistration />
+          <OfflineBanner />
           {children}
         </NextIntlClientProvider>
       </body>

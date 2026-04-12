@@ -26,6 +26,7 @@ import { Plus, Route, Search, X } from "lucide-react";
 import type { Profile, Relationship, RelationshipType } from "@/lib/types";
 import { computeAllRelations, getVariantConfig } from "@/lib/variants";
 import type { ComputedRelation, FamilyVariant } from "@/lib/variants";
+import { cacheTreeData } from "@/lib/offlineCache";
 
 interface FamilyTreeViewProps {
   currentUser: Profile;
@@ -447,6 +448,13 @@ function FamilyTreeViewInner({
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  // Cache tree data for offline access whenever it updates
+  useEffect(() => {
+    if (members.length > 0) {
+      cacheTreeData(members, relationships);
+    }
+  }, [members, relationships]);
 
   // Sync nodes/edges when data changes (after router.refresh or new member added)
   useEffect(() => {
